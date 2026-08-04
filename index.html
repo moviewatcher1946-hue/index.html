@@ -954,36 +954,42 @@ function setConnState(online){
 
 async function pollEvents(){
   if(!EVENTS_URL) return;
+
   try{
     const res = await fetch(EVENTS_URL, {cache:'no-store'});
-    if(!res.ok) throw new Error('bad status');
+
+    if(!res.ok) throw new Error("bad status");
+
     const data = await res.json();
+
     setConnState(true);
-    events = data.map(e => ({
-    type: e.type,
-    confidence: e.confidence,
-    timestamp: e.timestamp,
-    id: e.id
-}));
 
-seenIds = new Set(events.map(e => e.id));
 
-renderHistory();
     if(Array.isArray(data)){
+
       data
-        .filter(e => e && e.id !== undefined && !seenIds.has(e.id))
-        .sort((a,b)=> (a.id > b.id ? 1 : -1))
-        .forEach(e=>{
-          seenIds.add(e.id);
-          recordEvent({
-            type: (e.type || 'unknown').toLowerCase(),
-            confidence: Math.round(e.confidence ?? 0),
-            timestamp: e.timestamp || new Date().toISOString()
-          });
+      .filter(e => e && e.id !== undefined && !seenIds.has(e.id))
+      .sort((a,b)=>a.id-b.id)
+      .forEach(e=>{
+
+        seenIds.add(e.id);
+
+        recordEvent({
+          id:e.id,
+          type:(e.type || "unknown").toLowerCase(),
+          confidence:Math.round(e.confidence ?? 0),
+          timestamp:e.timestamp || new Date().toISOString()
         });
+
+      });
+
     }
+
   }catch(err){
+
+    console.log(err);
     setConnState(false);
+
   }
 }
 
@@ -1000,16 +1006,35 @@ function applyEndpoint(){
 }
 
 /* manual debug helper — simulates one Flask event locally, does not fabricate ongoing data */
-function sendTestEvent(){
-  const types = ['fire','smoke','flood','landslide'];
-  const type = types[Math.floor(Math.random()*types.length)];
-  recordEvent({
-    type,
-    confidence: Math.round(30 + Math.random()*60),
-    timestamp: new Date().toISOString()
-  });
-}
+async function sendTestEvent(){
 
+  const types = ['fire','smoke','flood','landslide'];
+
+  const event = {
+    type: types[Math.floor(Math.random()*types.length)],
+    confidence: Math.round(30 + Math.random()*60)
+  };
+
+  try{
+    const res = await fetch("https://flask-m2om.onrender.com/add_event", {
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json"
+      },
+      body: JSON.stringify(event)
+    });
+
+    const data = await res.json();
+
+    if(data.status === "saved"){
+      showToast("Event saved to backend");
+    }
+
+  }catch(err){
+    showToast("Failed to save event", true);
+    console.error(err);
+  }
+}
 /* ================= CAMERA CONTROLS ================= */
 function snapshot(){ showToast('Snapshot captured'); }
 function reconnectCamera(){
