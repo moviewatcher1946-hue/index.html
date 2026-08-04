@@ -926,6 +926,9 @@ function recordEvent(evt){
   const recorded = document.getElementById('toggleRecord').checked;
   events.unshift({...evt, recorded});
   events = events.slice(0, 100);
+
+  localStorage.setItem("events", JSON.stringify(events));
+
   renderHistory();
   updateStatusChip(evt.type, evt.confidence, evt.timestamp);
 
