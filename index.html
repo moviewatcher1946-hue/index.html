@@ -879,8 +879,8 @@ function beep(critical){
 }
 
 /* ================= EVENT HISTORY (populated only from Flask) ================= */
-let events = JSON.parse(localStorage.getItem("events") || "[]");
-let seenIds = new Set(events.map(e => e.id));
+let events = [];
+let seenIds = new Set();
 
 renderHistory();
 
@@ -927,8 +927,6 @@ function recordEvent(evt){
   events.unshift({...evt, recorded});
   events = events.slice(0, 100);
 
-  localStorage.setItem("events", JSON.stringify(events));
-
   renderHistory();
   updateStatusChip(evt.type, evt.confidence, evt.timestamp);
 
@@ -961,6 +959,16 @@ async function pollEvents(){
     if(!res.ok) throw new Error('bad status');
     const data = await res.json();
     setConnState(true);
+    events = data.map(e => ({
+    type: e.type,
+    confidence: e.confidence,
+    timestamp: e.timestamp,
+    id: e.id
+}));
+
+seenIds = new Set(events.map(e => e.id));
+
+renderHistory();
     if(Array.isArray(data)){
       data
         .filter(e => e && e.id !== undefined && !seenIds.has(e.id))
