@@ -879,8 +879,10 @@ function beep(critical){
 }
 
 /* ================= EVENT HISTORY (populated only from Flask) ================= */
-let events = [];
-let seenIds = new Set();
+let events = JSON.parse(localStorage.getItem("events") || "[]");
+let seenIds = new Set(events.map(e => e.id));
+
+renderHistory();
 
 function iconFor(type){
   if(type === 'fire') return '🔥';
