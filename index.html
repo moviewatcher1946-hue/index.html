@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Sentry — Vision Warning System</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --accent:#3D8D7A;
+  --accent-2:#316f60;
+  --mint:#B3D8A8;
+  --teal-light:#A3D1C6;
+  --cream:#FBFFE4;
+  --red:#ff3b30;
+  --amber:#ff9f0a;
+  --bg-a:#FBFFE4;
+  --bg-b:#A3D1C6;
+  --text:#1c1c1e;
+  --muted:#6e6e73;
+  --muted-2:#9a9a9e;
+  --glass:rgba(255,255,255,.55);
+  --glass-strong:rgba(255,255,255,.72);
+  --glass-border:rgba(255,255,255,.75);
+  --hair:rgba(60,60,67,.1);
+  --f:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,sans-serif;
+  --f-display:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif;
+  --mx:50%;
+  --my:10%;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+
+/* registering these lets the browser smoothly interpolate the highlight position instead of snapping */
+@property --mx{ syntax:'<percentage>'; inherits:true; initial-value:50%; }
+@property --my{ syntax:'<percentage>'; inherits:true; initial-value:10%; }
+
+html.no-distortion{ --distortion:none; }
+
+body{
+  font-family:var(--f);
+  color:var(--text);
+  min-height:100vh;
+  background:linear-gradient(160deg,var(--bg-a),var(--bg-b) 60%,var(--mint));
+  overflow-x:hidden;
+}
+
+/* moire backdrop, softened so glass panels can sit on top of it */
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  background-image:
+    repeating-linear-gradient(4deg, rgba(61,141,122,.10) 0px, rgba(61,141,122,.10) 1px, transparent 1px, transparent 6px),
+    repeating-linear-gradient(-4deg, rgba(61,141,122,.10) 0px, rgba(61,141,122,.10) 1px, transparent 1px, transparent 6px);
+  pointer-events:none;
+  z-index:0;
+}
+
+/* soft ambient light blobs, liquid-glass loves a light source to refract */
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:
+    radial-gradient(480px 320px at 15% 0%, rgba(61,141,122,.20), transparent 60%),
+    radial-gradient(420px 300px at 100% 30%, rgba(179,216,168,.28), transparent 60%);
+  pointer-events:none;
+  z-index:0;
+}
+
+.app{
+  position:relative;
+  z-index:1;
+  max-width:640px;
+  margin:0 auto;
+  padding:18px 16px 130px;
+}
+
+/* ============ TOP BAR ============ */
+
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  padding:6px 4px 20px;
+}
+
+.title-block .eyebrow{
+  font-size:12px;
+  font-weight:600;
+  color:var(--accent-2);
+  letter-spacing:.3px;
+}
+.title-block h1{
+  font-family:var(--f-display);
+  font-size:32px;
+  font-weight:700;
+  letter-spacing:-.5px;
+  margin-top:2px;
+}
+
+.conn-pill{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:8px 13px 8px 10px;
+  border-radius:999px;
+  background:var(--glass);
+  backdrop-filter:blur(3px) url(#liquid-distortion) saturate(180%) blur(10px);
+  -webkit-backdrop-filter:blur(16px) saturate(180%);
+  border:1px solid var(--glass-border);
+  box-shadow:0 4px 18px rgba(20,60,30,.07);
+  font-size:12.5px;
+  font-weight:600;
+  color:var(--muted);
+  white-space:nowrap;
+  margin-top:4px;
+}
+html.no-distortion .conn-pill{ backdrop-filter:blur(16px) saturate(180%); }
+.conn-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--muted-2);
+  transition:.25s;
+}
+.conn-pill.online .conn-dot{background:var(--accent);box-shadow:0 0 8px rgba(61,141,122,.65);}
+.conn-pill.online{color:#2b6656;}
+.conn-pill.offline .conn-dot{background:var(--red);box-shadow:0 0 8px rgba(255,59,48,.6);}
+.conn-pill.offline{color:#b3261e;}
+
+/* ============ GLASS CARD ============ */
+
+.glass{
+  position:relative;
+  background:var(--glass);
+  backdrop-filter:blur(3px) url(#liquid-distortion) saturate(180%) blur(14px);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  border:1px solid var(--glass-border);
+  border-radius:26px;
+  box-shadow:0 10px 30px rgba(20,60,30,.08), inset 0 1px 0 rgba(255,255,255,.7);
+  padding:20px;
+  margin-bottom:16px;
+  overflow:hidden;
+}
+html.no-distortion .glass{ backdrop-filter:blur(20px) saturate(180%); }
+/* top sheen — the fixed "cast light" every liquid-glass surface has */
+.glass::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;height:50%;
+  background:linear-gradient(180deg,rgba(255,255,255,.35),transparent);
+  pointer-events:none;
+}
+/* specular highlight — moves with the cursor, like light catching the glass */
+.glass::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:radial-gradient(220px 180px at var(--mx) var(--my), rgba(255,255,255,.55), transparent 65%);
+  mix-blend-mode:overlay;
+  opacity:0;
+  transition:opacity .35s ease;
+  pointer-events:none;
+}
+.glass:hover::after{opacity:1;}
+.glass.idle-sheen::after{
+  opacity:.55;
+  animation:sheenSweep 5s ease-in-out infinite;
+}
+@keyframes sheenSweep{
+  0%,100%{ --mx:15%; --my:0%; }
+  50%{ --mx:85%; --my:30%; }
+}
+
+.card-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:14px;
+  position:relative;
+}
+.card-head h2{
+  font-family:var(--f-display);
+  font-size:18px;
+  font-weight:700;
+  letter-spacing:-.2px;
+}
+.card-head .tag{
+  font-size:11.5px;
+  font-weight:600;
+  color:var(--muted);
+  background:rgba(255,255,255,.6);
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid var(--hair);
+}
+
+.view{display:none;}
+.view.active{display:block;animation:rise .6s cubic-bezier(.22,1,.36,1);}
+@keyframes rise{
+  0%{opacity:0;transform:translateY(26px) scale(.97);filter:blur(3px);}
+  60%{opacity:1;filter:blur(0);}
+  100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0);}
+}
+
+/* ============ CAMERA ============ */
+
+.scope{
+  position:relative;
+  width:100%;
+  aspect-ratio:16/10;
+  background:#0b120c;
+  border-radius:20px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.5);
+}
+.scope img{display:block;width:100%;height:100%;object-fit:cover;}
+
+.scope-badge{
+  position:absolute;
+  top:12px;left:12px;
+  display:flex;align-items:center;gap:6px;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.5px;
+  color:#fff;
+  background:rgba(20,20,20,.35);
+  backdrop-filter:blur(10px);
+  padding:6px 10px 6px 8px;
+  border-radius:999px;
+}
+.scope-badge::before{
+  content:"";width:7px;height:7px;border-radius:50%;
+  background:var(--red);box-shadow:0 0 6px var(--red);
+  animation:pulse 1.4s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+/* ============ STATUS CHIPS (real data only) ============ */
+
+.chip-row{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
+.chip{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:13px 16px;
+  border-radius:18px;
+  background:rgba(255,255,255,.55);
+  border:1px solid var(--hair);
+}
+.chip .left{display:flex;align-items:center;gap:11px;}
+.chip .swatch{width:10px;height:10px;border-radius:50%;background:var(--muted-2);}
+.chip.fire .swatch{background:var(--red);}
+.chip.smoke .swatch{background:var(--muted-2);}
+.chip.flood .swatch{background:var(--teal-light);}
+.chip.landslide .swatch{background:var(--amber);}
+.chip .name{font-weight:600;font-size:14.5px;}
+.chip .reading{font-family:var(--f);font-weight:600;font-size:13.5px;color:var(--muted);}
+.chip .reading.hot{color:var(--red);}
+
+/* ============ BUTTONS ============ */
+
+.btn{
+  position:relative;
+  padding:13px 20px;
+  border:1px solid rgba(255,255,255,.55);
+  border-radius:999px;
+  background:linear-gradient(160deg, rgba(61,141,122,.88), rgba(49,111,96,.72));
+  backdrop-filter:blur(14px) saturate(180%);
+  -webkit-backdrop-filter:blur(14px) saturate(180%);
+  color:#fff;
+  font-weight:600;
+  font-size:14.5px;
+  cursor:pointer;
+  box-shadow:
+    0 6px 18px rgba(30,80,68,.28),
+    inset 0 1px 0 rgba(255,255,255,.6),
+    inset 0 -6px 10px -6px rgba(0,60,20,.35);
+  transition:.15s;
+  overflow:hidden;
+  text-shadow:0 1px 1px rgba(0,40,15,.15);
+}
+.btn::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;height:55%;
+  background:linear-gradient(180deg, rgba(255,255,255,.45), transparent);
+  pointer-events:none;
+}
+.btn:hover{filter:brightness(1.04);}
+.btn:active{transform:scale(.97);}
+.btn.ghost{
+  background:linear-gradient(160deg, rgba(255,255,255,.55), rgba(255,255,255,.28));
+  color:var(--text);
+  border:1px solid rgba(255,255,255,.6);
+  box-shadow:
+    0 4px 14px rgba(20,60,30,.10),
+    inset 0 1px 0 rgba(255,255,255,.8);
+  text-shadow:none;
+}
+.btn.ghost:active{background:linear-gradient(160deg, rgba(255,255,255,.75), rgba(255,255,255,.45));}
+.btn.full{width:100%;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+
+/* ============ TOGGLES ============ */
+
+.row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:13px 2px;
+  border-bottom:1px solid var(--hair);
+}
+.row:last-child{border-bottom:none;}
+.row .t-label{font-size:15px;font-weight:500;}
+.row .t-desc{font-size:12.5px;color:var(--muted);margin-top:2px;}
+
+.switch{position:relative;width:50px;height:30px;flex:none;}
+.switch input{opacity:0;width:0;height:0;position:absolute;}
+.slider{
+  position:absolute;
+  inset:0;
+  border-radius:999px;
+  cursor:pointer;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.05) 55%),
+    rgba(255,255,255,.32);
+  backdrop-filter:blur(6px) saturate(160%);
+  -webkit-backdrop-filter:blur(6px) saturate(160%);
+  border:1px solid rgba(255,255,255,.65);
+  box-shadow:
+    inset 0 1px 4px rgba(20,40,30,.14),
+    inset 0 -1px 0 rgba(255,255,255,.4),
+    0 1px 2px rgba(20,60,30,.06);
+  transition:background .35s ease, box-shadow .35s ease, border-color .35s ease;
+}
+html.no-distortion .slider{ backdrop-filter:blur(6px) saturate(160%); }
+/* the thumb: a little droplet of glass that slides, catches light, and
+   stretches like a liquid blob while it's being dragged */
+.slider::before{
+  content:"";
+  position:absolute;
+  width:26px;height:26px;
+  left:2px;top:2px;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,.95), rgba(255,255,255,.55) 45%, rgba(255,255,255,.8) 100%);
+  box-shadow:
+    0 2px 6px rgba(10,40,25,.28),
+    0 1px 1px rgba(10,40,25,.15),
+    inset 0 1px 1px rgba(255,255,255,.95),
+    inset 0 -3px 4px rgba(20,60,40,.10);
+  transform-origin:left center;
+  transition:transform .4s cubic-bezier(.34,1.56,.64,1), width .28s cubic-bezier(.34,1.56,.64,1), left .28s cubic-bezier(.34,1.56,.64,1);
+}
+.switch input:checked + .slider{
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.4), rgba(255,255,255,.02) 55%),
+    linear-gradient(160deg, rgba(61,141,122,.92), rgba(49,111,96,.78));
+  border-color:rgba(255,255,255,.55);
+  box-shadow:
+    inset 0 1px 3px rgba(15,45,35,.35),
+    inset 0 -1px 0 rgba(255,255,255,.25),
+    0 0 0 1px rgba(61,141,122,.15),
+    0 3px 10px rgba(61,141,122,.35);
+}
+.switch input:checked + .slider::before{
+  transform:translateX(20px);
+  transform-origin:right center;
+}
+/* press/drag squish — the thumb stretches toward the direction of travel
+   like a bead of liquid glass, then springs back on release */
+.slider.pressing::before{ width:32px; }
+.switch input:checked + .slider.pressing::before{ left:-4px; width:32px; transform:translateX(20px); }
+
+/* ============ SETTINGS FIELD ============ */
+
+.field{margin-bottom:14px;}
+.field label{
+  display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:6px;
+  text-transform:uppercase;letter-spacing:.4px;
+}
+.field input[type=text]{
+  width:100%;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid var(--hair);
+  background:rgba(255,255,255,.65);
+  font-family:var(--f);
+  font-size:14px;
+  color:var(--text);
+}
+.field input[type=text]:focus{outline:2px solid var(--accent);outline-offset:1px;}
+.hint{font-size:12px;color:var(--muted-2);margin-top:6px;line-height:1.5;}
+
+/* ============ HISTORY LIST ============ */
+
+.hlist{display:flex;flex-direction:column;gap:9px;}
+.hitem{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 14px;
+  border-radius:16px;
+  background:rgba(255,255,255,.55);
+  border:1px solid var(--hair);
+}
+.hitem .ico{
+  width:36px;height:36px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(255,59,48,.12);
+  color:var(--red);
+  flex:none;
+}
+.hitem.smoke .ico{background:rgba(110,110,115,.12);color:var(--muted);}
+.hitem.flood .ico{background:rgba(163,209,198,.35);color:#1f6b5c;}
+.hitem.landslide .ico{background:rgba(255,159,10,.14);color:#b8720a;}
+.hitem .body{flex:1;min-width:0;}
+.hitem .body .top{display:flex;justify-content:space-between;gap:8px;}
+.hitem .kind{font-weight:600;font-size:14px;text-transform:capitalize;}
+.hitem .time{font-size:12px;color:var(--muted-2);white-space:nowrap;}
+.hitem .meta{font-size:12.5px;color:var(--muted);margin-top:2px;}
+
+.empty{
+  text-align:center;
+  padding:34px 10px;
+  color:var(--muted);
+  font-size:14px;
+}
+.empty .big{font-size:30px;margin-bottom:8px;}
+
+/* ============ TOAST ============ */
+
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:110px;
+  transform:translateX(-50%) translateY(20px);
+  opacity:0;
+  pointer-events:none;
+  display:flex;align-items:center;gap:10px;
+  padding:13px 18px;
+  border-radius:999px;
+  background:rgba(28,28,30,.78);
+  backdrop-filter:blur(16px);
+  color:#fff;
+  font-size:13.5px;
+  font-weight:600;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+  z-index:20;
+  transition:.3s cubic-bezier(.2,.8,.2,1);
+  max-width:88vw;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;}
+.toast.critical .dot{background:var(--red);}
+
+/* ============ BOTTOM TAB BAR ============ */
+
+.tabbar{
+  position:fixed;
+  left:50%;
+  bottom:18px;
+  transform:translateX(-50%);
+  z-index:15;
+  display:flex;
+  gap:2px;
+  padding:8px;
+  max-width:calc(100vw - 24px);
+  background:var(--glass-strong);
+  backdrop-filter:blur(3px) url(#liquid-distortion) saturate(190%) blur(18px);
+  -webkit-backdrop-filter:blur(24px) saturate(190%);
+  border:1px solid var(--glass-border);
+  border-radius:999px;
+  box-shadow:0 14px 40px rgba(20,60,30,.16), inset 0 1px 0 rgba(255,255,255,.8);
+  overflow:hidden;
+}
+html.no-distortion .tabbar{ backdrop-filter:blur(24px) saturate(190%); }
+.tabbar::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:radial-gradient(140px 60px at var(--mx) var(--my), rgba(255,255,255,.6), transparent 70%);
+  mix-blend-mode:overlay;
+  opacity:.6;
+  animation:sheenSweep 6s ease-in-out infinite;
+  pointer-events:none;
+}
+.tab{
+  position:relative;
+  z-index:1;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  width:60px;
+  padding:9px 4px 8px;
+  border:none;background:transparent;
+  border-radius:999px;
+  cursor:pointer;
+  color:var(--muted-2);
+  transition:color .2s;
+}
+.tab svg{width:22px;height:22px;flex:none;}
+.tab span{font-size:10px;font-weight:600;}
+.tab.active{color:var(--accent-2);}
+.tab.active .ic-wrap{background:rgba(61,141,122,.16);}
+.ic-wrap{
+  width:34px;height:26px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:12px;
+  transition:background .2s;
+}
+
+/* liquid pill that morphs between tabs — JS stretches it across the travel
+   distance first (like a droplet reaching for the new tab), then lets it
+   snap back to full height/width with a springy overshoot, like a bead of
+   glass being dragged and released. left/width are animated inline by JS;
+   these transitions are the fallback/initial-placement state. */
+.tab-indicator{
+  position:absolute;
+  top:8px;
+  height:calc(100% - 16px);
+  width:60px;
+  left:8px;
+  border-radius:999px;
+  background:linear-gradient(160deg, rgba(61,141,122,.26), rgba(61,141,122,.08));
+  border:1px solid rgba(61,141,122,.3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 3px 14px rgba(61,141,122,.22);
+  pointer-events:none;
+  z-index:0;
+  transform-origin:center;
+}
+
+::-webkit-scrollbar{width:0;height:0;}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms !important;transition:none !important;}
+}
+
+@media (max-width:420px){
+  .title-block h1{font-size:26px;}
+  .tab{width:min(60px, 17vw);padding:9px 2px 8px;}
+  .tabbar{gap:0;padding:6px;}
+}
+</style>
+</head>
+
+<body>
+
+<!-- Refraction filter: bends the backdrop through the glass instead of just blurring it flat.
+     Skipped on touch/mobile via the no-distortion class below, since backdrop-filter with an
+     SVG url() reference renders inconsistently (blocky/warped) on mobile browsers. -->
+<svg style="position:absolute;width:0;height:0;overflow:hidden;" aria-hidden="true">
+  <defs>
+    <filter id="liquid-distortion" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="noise"/>
+      <feGaussianBlur in="noise" stdDeviation="3" result="softNoise"/>
+      <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="22" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="app">
+
+  <div class="topbar">
+    <div class="title-block">
+      <div class="eyebrow">VISION WARNING SYSTEM</div>
+      <h1 id="pageTitle">DASHBOARD</h1>
+    </div>
+    <div class="conn-pill offline" id="connPill">
+      <div class="conn-dot"></div>
+      <span id="connText">Offline</span>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div class="view active" id="view-home">
+
+    <div class="glass">
+      <div class="card-head">
+        <h2>Live Feed</h2>
+        <div class="tag">CAM 01</div>
+      </div>
+      <div class="scope">
+     <img src="https://media.tenor.com/VFFJ8Ei3C2IAAAAC/rickroll-rick.gif" alt="Placeholder" width="640" height="480">
+        <div class="scope-badge">LIVE</div>
+      </div>
+    </div>
+
+    <div class="glass">
+      <div class="card-head">
+        <h2>Detection Status</h2>
+        <div class="tag" id="lastUpdateTag">No data yet</div>
+      </div>
+      <div class="chip-row">
+        <div class="chip fire">
+          <div class="left"><div class="swatch"></div><div class="name">Fire</div></div>
+          <div class="reading" id="fireReading">No data</div>
+        </div>
+        <div class="chip smoke">
+          <div class="left"><div class="swatch"></div><div class="name">Smoke</div></div>
+          <div class="reading" id="smokeReading">No data</div>
+        </div>
+        <div class="chip flood">
+          <div class="left"><div class="swatch"></div><div class="name">Flood</div></div>
+          <div class="reading" id="floodReading">No data</div>
+        </div>
+        <div class="chip landslide">
+          <div class="left"><div class="swatch"></div><div class="name">Landslide</div></div>
+          <div class="reading" id="landslideReading">No data</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CAMERA -->
+  <div class="view" id="view-camera">
+    <div class="glass">
+      <div class="card-head">
+        <h2>Camera</h2>
+        <div class="tag">CAM 01</div>
+      </div>
+      <div class="scope" style="aspect-ratio:4/3;">
+        <img src="https://media.tenor.com/VFFJ8Ei3C2IAAAAC/rickroll-rick.gif" alt="Placeholder" width="640" height="480">
+        <div class="scope-badge">LIVE</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="snapshot()">Take Snapshot</button>
+        <button class="btn ghost" onclick="reconnectCamera()">Reconnect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERTS -->
+  <div class="view" id="view-alerts">
+    <div class="glass">
+      <div class="card-head"><h2>Notifications</h2></div>
+      <div class="row">
+        <div><div class="t-label">Alert notifications</div><div class="t-desc">Show a banner when Flask reports an event</div></div>
+        <label class="switch"><input type="checkbox" id="toggleNotify" checked><span class="slider"></span></label>
+      </div>
+      <div class="row">
+        <div><div class="t-label">Sound</div><div class="t-desc">Play a tone when an event arrives</div></div>
+        <label class="switch"><input type="checkbox" id="toggleSound"><span class="slider"></span></label>
+      </div>
+      <div class="row">
+        <div><div class="t-label">Auto-record</div><div class="t-desc">Mark incoming events as recorded automatically</div></div>
+        <label class="switch"><input type="checkbox" id="toggleRecord" checked><span class="slider"></span></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="view" id="view-history">
+    <div class="glass">
+      <div class="card-head">
+        <h2>Event History</h2>
+        <div class="tag" id="historyCount">0 events</div>
+      </div>
+      <div class="hlist" id="historyList">
+        <div class="empty">
+          <div class="big">📭</div>
+          Events sent from Flask will appear here automatically.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="view" id="view-settings">
+    <div class="glass">
+      <div class="card-head"><h2>Flask Connection</h2></div>
+      <div class="field">
+        <label>Events endpoint</label>
+        <input type="text" id="endpointInput" value="/events" placeholder="https://your-flask-host/events">
+        <div class="hint">Polled every 3 seconds. Expected response: a JSON array of objects like <code>{"id":1,"type":"fire","confidence":82,"timestamp":"2026-08-04T10:22:00"}</code>. <code>type</code> can be fire, smoke, flood, or landslide. Only unseen ids are recorded.</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="applyEndpoint()">Connect</button>
+        <button class="btn ghost" onclick="sendTestEvent()">Send Test Event</button>
+      </div>
+    </div>
+
+    <div class="glass">
+      <div class="card-head"><h2>Polling</h2></div>
+      <div class="row">
+        <div><div class="t-label">Status</div><div class="t-desc" id="pollStatusDesc">Not connected yet</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast">
+  <div class="dot"></div>
+  <span id="toastText"></span>
+</div>
+
+<div class="tabbar" id="tabbar">
+  <div class="tab-indicator" id="tabIndicator"></div>
+  <button class="tab active" data-view="home" data-title="Home">
+    <div class="ic-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg></div>
+    <span>Home</span>
+  </button>
+  <button class="tab" data-view="camera" data-title="Camera">
+    <div class="ic-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3"/></svg></div>
+    <span>Camera</span>
+  </button>
+  <button class="tab" data-view="alerts" data-title="Alerts">
+    <div class="ic-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+    <span>Alerts</span>
+  </button>
+  <button class="tab" data-view="history" data-title="History">
+    <div class="ic-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+    <span>History</span>
+  </button>
+  <button class="tab" data-view="settings" data-title="Settings">
+    <div class="ic-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+    <span>Settings</span>
+  </button>
+</div>
+
+<script>
+
+/* ================= LIQUID GLASS: mobile/touch compatibility =================
+   backdrop-filter with an SVG url() displacement reference is unreliable on
+   mobile browsers — it can render as a warped, blocky mess instead of a
+   gentle refraction. Detect touch/coarse-pointer devices and drop the SVG
+   filter everywhere, falling back to the plain blur+saturate glass look. */
+const isCoarsePointer = window.matchMedia('(hover:none), (pointer:coarse)').matches;
+if(isCoarsePointer){
+  document.documentElement.classList.add('no-distortion');
+}
+const hasHover = !isCoarsePointer && window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+
+if(hasHover){
+  document.querySelectorAll('.glass').forEach(card=>{
+    card.addEventListener('mousemove', e=>{
+      const r = card.getBoundingClientRect();
+      const mx = ((e.clientX - r.left) / r.width) * 100;
+      const my = ((e.clientY - r.top) / r.height) * 100;
+      card.style.setProperty('--mx', mx + '%');
+      card.style.setProperty('--my', my + '%');
+    });
+  });
+}else{
+  // no pointer to catch the light with — give every card a slow idle sheen instead
+  document.querySelectorAll('.glass').forEach(card=> card.classList.add('idle-sheen'));
+}
+
+/* ================= NAVIGATION: liquid tab indicator =================
+   The pill stretches to span the full distance between the old and new tab
+   (like a droplet of glass being dragged along the bar), then contracts
+   back down onto the new tab with a springy overshoot. Driven from JS since
+   a plain CSS transition on left/width alone can't produce the "reach, then
+   snap back" liquid motion. */
+const tabs = document.querySelectorAll('.tab');
+const tabbar = document.getElementById('tabbar');
+const indicator = document.getElementById('tabIndicator');
+let indicatorAnimId = 0;
+
+function placeIndicatorInstant(tab){
+  const barRect = tabbar.getBoundingClientRect();
+  const tabRect = tab.getBoundingClientRect();
+  indicator.style.left = (tabRect.left - barRect.left) + 'px';
+  indicator.style.width = tabRect.width + 'px';
+}
+
+function morphIndicator(tab){
+  const barRect = tabbar.getBoundingClientRect();
+  const tabRect = tab.getBoundingClientRect();
+  const newLeft = tabRect.left - barRect.left;
+  const newWidth = tabRect.width;
+
+  const curLeft = indicator.offsetLeft;
+  const curWidth = indicator.offsetWidth;
+
+  // nothing to do if we're already there (e.g. re-tapping the active tab)
+  if(Math.abs(curLeft - newLeft) < 0.5 && Math.abs(curWidth - newWidth) < 0.5) return;
+
+  const stretchLeft = Math.min(curLeft, newLeft);
+  const stretchRight = Math.max(curLeft + curWidth, newLeft + newWidth);
+  const stretchWidth = stretchRight - stretchLeft;
+
+  const myAnim = ++indicatorAnimId; // guard against overlapping rapid taps
+
+  // Phase 1 — reach: stretch quickly to cover both the old and new spot
+  indicator.style.transition = 'left .16s cubic-bezier(.3,0,.15,1), width .16s cubic-bezier(.3,0,.15,1)';
+  indicator.style.left = stretchLeft + 'px';
+  indicator.style.width = stretchWidth + 'px';
+
+  // Phase 2 — settle: spring back down to the target tab's size, overshooting slightly
+  setTimeout(()=>{
+    if(myAnim !== indicatorAnimId) return;
+    indicator.style.transition = 'left .42s cubic-bezier(.34,1.56,.64,1), width .42s cubic-bezier(.34,1.56,.64,1)';
+    indicator.style.left = newLeft + 'px';
+    indicator.style.width = newWidth + 'px';
+  }, 150);
+}
+
+tabs.forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    tabs.forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+tab.dataset.view).classList.add('active');
+    document.getElementById('pageTitle').textContent = tab.dataset.title;
+    morphIndicator(tab);
+  });
+});
+
+// place the pill under the active tab once layout has settled (fonts/icons loaded)
+function initIndicator(){
+  placeIndicatorInstant(document.querySelector('.tab.active'));
+}
+if(document.readyState === 'complete'){ initIndicator(); }
+else{ window.addEventListener('load', initIndicator); }
+window.addEventListener('resize', ()=> placeIndicatorInstant(document.querySelector('.tab.active')));
+
+/* ================= LIQUID GLASS SWITCHES =================
+   While a switch is being pressed/dragged, the thumb stretches toward the
+   direction of travel like a bead of liquid glass, then springs back to a
+   circle when released — mirrors the tab indicator's reach-and-settle motion. */
+document.querySelectorAll('.switch input').forEach(inp=>{
+  const slider = inp.nextElementSibling;
+  const press = ()=> slider.classList.add('pressing');
+  const release = ()=> slider.classList.remove('pressing');
+  inp.addEventListener('pointerdown', press);
+  inp.addEventListener('pointerup', release);
+  inp.addEventListener('pointerleave', release);
+  inp.addEventListener('touchend', release);
+});
+
+/* ================= TOAST ================= */
+let toastTimer;
+function showToast(text, critical){
+  const el = document.getElementById('toast');
+  document.getElementById('toastText').textContent = text;
+  el.classList.toggle('critical', !!critical);
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 3200);
+}
+
+/* ================= SOUND (synthesized, no asset needed) ================= */
+function beep(critical){
+  if(!document.getElementById('toggleSound').checked) return;
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = critical ? 3400 : 2600;
+    filter.connect(ctx.destination);
+
+    function tone(freq, start, dur, peak){
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + start);
+      g.gain.exponentialRampToValueAtTime(peak, ctx.currentTime + start + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
+      osc.connect(g).connect(filter);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + dur + 0.05);
+    }
+
+    if(critical){
+      // quicker, more insistent — three notes
+      tone(987.77, 0,    0.15, 0.24); // B5
+      tone(987.77, 0.13, 0.15, 0.24); // B5 repeat
+      tone(1318.5, 0.26, 0.26, 0.26); // E6
+    }else{
+      // calm two-note rise, closer to a native notification chime
+      tone(1046.5, 0,    0.22, 0.16); // C6
+      tone(1567.98,0.15, 0.30, 0.18); // G6
+    }
+  }catch(e){}
+}
+
+/* ================= EVENT HISTORY (populated only from Flask) ================= */
+let events = [];
+let seenIds = new Set();
+
+function iconFor(type){
+  if(type === 'fire') return '🔥';
+  if(type === 'smoke') return '💨';
+  if(type === 'flood') return '💧';
+  if(type === 'landslide') return '⛰️';
+  return '•';
+}
+
+function renderHistory(){
+  const list = document.getElementById('historyList');
+  document.getElementById('historyCount').textContent = events.length + ' event' + (events.length===1?'':'s');
+  if(events.length === 0){
+    list.innerHTML = '<div class="empty"><div class="big">📭</div>Events sent from Flask will appear here automatically.</div>';
+    return;
+  }
+  list.innerHTML = events.map(e=>`
+    <div class="hitem ${e.type}">
+      <div class="ico">${iconFor(e.type)}</div>
+      <div class="body">
+        <div class="top">
+          <span class="kind">${e.type}</span>
+          <span class="time">${new Date(e.timestamp).toLocaleTimeString()}</span>
+        </div>
+        <div class="meta">${e.confidence}% confidence${e.recorded ? ' · Auto-recorded' : ''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateStatusChip(type, confidence, timestamp){
+  const readingEl = document.getElementById(type+'Reading');
+  if(!readingEl) return;
+  readingEl.textContent = confidence + '%';
+  readingEl.classList.toggle('hot', confidence >= 60);
+  document.getElementById('lastUpdateTag').textContent =
+    'Updated ' + new Date(timestamp).toLocaleTimeString();
+}
+
+function recordEvent(evt){
+  const recorded = document.getElementById('toggleRecord').checked;
+  events.unshift({...evt, recorded});
+  events = events.slice(0, 100);
+  renderHistory();
+  updateStatusChip(evt.type, evt.confidence, evt.timestamp);
+
+  const notify = document.getElementById('toggleNotify').checked;
+  const critical = evt.confidence >= 60;
+  if(notify){
+    showToast(`${evt.type[0].toUpperCase()+evt.type.slice(1)} detected · ${evt.confidence}%`, critical);
+  }
+  beep(critical);
+}
+
+/* ================= FLASK POLLING ================= */
+let EVENTS_URL = document.getElementById('endpointInput').value.trim();
+let pollTimer = null;
+
+function setConnState(online){
+  const pill = document.getElementById('connPill');
+  pill.classList.toggle('online', online);
+  pill.classList.toggle('offline', !online);
+  document.getElementById('connText').textContent = online ? 'Connected' : 'Offline';
+  document.getElementById('pollStatusDesc').textContent = online
+    ? `Connected · polling ${EVENTS_URL}`
+    : `Waiting to reach ${EVENTS_URL || '(no endpoint set)'}`;
+}
+
+async function pollEvents(){
+  if(!EVENTS_URL) return;
+  try{
+    const res = await fetch(EVENTS_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('bad status');
+    const data = await res.json();
+    setConnState(true);
+    if(Array.isArray(data)){
+      data
+        .filter(e => e && e.id !== undefined && !seenIds.has(e.id))
+        .sort((a,b)=> (a.id > b.id ? 1 : -1))
+        .forEach(e=>{
+          seenIds.add(e.id);
+          recordEvent({
+            type: (e.type || 'unknown').toLowerCase(),
+            confidence: Math.round(e.confidence ?? 0),
+            timestamp: e.timestamp || new Date().toISOString()
+          });
+        });
+    }
+  }catch(err){
+    setConnState(false);
+  }
+}
+
+function applyEndpoint(){
+  EVENTS_URL = document.getElementById('endpointInput').value.trim();
+  clearInterval(pollTimer);
+  if(EVENTS_URL){
+    pollEvents();
+    pollTimer = setInterval(pollEvents, 3000);
+    showToast('Connecting to Flask…');
+  }else{
+    setConnState(false);
+  }
+}
+
+/* manual debug helper — simulates one Flask event locally, does not fabricate ongoing data */
+function sendTestEvent(){
+  const types = ['fire','smoke','flood','landslide'];
+  const type = types[Math.floor(Math.random()*types.length)];
+  recordEvent({
+    type,
+    confidence: Math.round(30 + Math.random()*60),
+    timestamp: new Date().toISOString()
+  });
+}
+
+/* ================= CAMERA CONTROLS ================= */
+function snapshot(){ showToast('Snapshot captured'); }
+function reconnectCamera(){
+  showToast('Reconnecting camera…');
+  setTimeout(()=> showToast('Camera reconnected'), 1200);
+}
+
+/* start polling on load using the default endpoint */
+applyEndpoint();
+
+</script>
+
+</body>
+</html>
