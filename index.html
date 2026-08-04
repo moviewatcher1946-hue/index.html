@@ -71,9 +71,96 @@ body::after{
   z-index:0;
 }
 
+/* ============ WIDE-SCREEN LAYOUT ============
+   On narrow/mobile viewports this behaves exactly as before: a single
+   centered .app column. On wide viewports, .layout centers that same
+   .app column but gives it two flanking panels instead of empty gutters. */
+.layout{
+  position:relative;
+  z-index:1;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  gap:22px;
+  max-width:1360px;
+  margin:0 auto;
+  padding:0 20px;
+}
+
+.side{
+  display:none;
+}
+
+@media (min-width:1120px){
+  .side{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    width:272px;
+    flex:none;
+    position:sticky;
+    top:22px;
+    padding-top:18px;
+  }
+}
+
+.side .glass{margin-bottom:0;}
+
+.side-brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.side-brand .mark{
+  width:44px;height:44px;border-radius:14px;
+  flex:none;
+  background:linear-gradient(160deg, rgba(61,141,122,.95), rgba(49,111,96,.8));
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 16px rgba(30,80,68,.28), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.side-brand .mark svg{width:22px;height:22px;color:#fff;}
+.side-brand .word{font-family:var(--f-display);font-weight:700;font-size:17px;letter-spacing:-.2px;}
+.side-brand .sub{font-size:11.5px;color:var(--muted);margin-top:1px;}
+
+.legend-row{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 2px;
+}
+.legend-row .swatch{width:9px;height:9px;border-radius:50%;flex:none;}
+.legend-row.fire .swatch{background:var(--red);}
+.legend-row.smoke .swatch{background:var(--muted-2);}
+.legend-row.flood .swatch{background:var(--teal-light);}
+.legend-row.landslide .swatch{background:var(--amber);}
+.legend-row .label{font-size:13px;font-weight:500;}
+.legend-row .desc{font-size:11.5px;color:var(--muted-2);}
+
+.quick-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:9px 2px;
+  border-bottom:1px solid var(--hair);
+  font-size:13px;
+}
+.quick-row:last-child{border-bottom:none;}
+.quick-row .k{color:var(--muted);}
+.quick-row .v{font-weight:600;}
+.quick-row .v.online{color:var(--accent-2);}
+.quick-row .v.offline{color:#b3261e;}
+
+.mini-hlist{display:flex;flex-direction:column;gap:8px;}
+.mini-hitem{
+  display:flex;align-items:center;gap:9px;
+  font-size:12.5px;
+  padding:2px 0;
+}
+.mini-hitem .ico{width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;background:rgba(255,255,255,.6);flex:none;}
+.mini-hitem .kind{font-weight:600;text-transform:capitalize;flex:1;min-width:0;}
+.mini-hitem .conf{color:var(--muted);white-space:nowrap;}
+.mini-empty{font-size:12.5px;color:var(--muted-2);padding:4px 2px;}
+
 .app{
   position:relative;
   z-index:1;
+  width:100%;
   max-width:640px;
   margin:0 auto;
   padding:18px 16px 130px;
@@ -559,7 +646,32 @@ html.no-distortion .tabbar{ backdrop-filter:blur(24px) saturate(190%); }
   </defs>
 </svg>
 
-<div class="app">
+<div class="layout">
+
+  <!-- LEFT SIDE PANEL (wide screens only) — static brand + sensor legend -->
+  <aside class="side" id="sideLeftPanel">
+    <div class="glass">
+      <div class="side-brand">
+        <div class="mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s7 7.5 7 12a7 7 0 0 1-14 0c0-4.5 7-12 7-12z"/></svg>
+        </div>
+        <div>
+          <div class="word">Sentry</div>
+          <div class="sub">Vision Warning System</div>
+        </div>
+      </div>
+    </div>
+    <div class="glass">
+      <div class="card-head"><h2 style="font-size:15px;">Sensor Legend</h2></div>
+      <div class="legend-row fire"><div class="swatch"></div><div class="label">Fire</div></div>
+      <div class="legend-row smoke"><div class="swatch"></div><div class="label">Smoke</div></div>
+      <div class="legend-row flood"><div class="swatch"></div><div class="label">Flood</div></div>
+      <div class="legend-row landslide"><div class="swatch"></div><div class="label">Landslide</div></div>
+      <div class="hint" style="margin-top:10px;">A reading turns red once confidence reaches 60%.</div>
+    </div>
+  </aside>
+
+  <div class="app">
 
   <div class="topbar">
     <div class="title-block">
@@ -688,6 +800,33 @@ html.no-distortion .tabbar{ backdrop-filter:blur(24px) saturate(190%); }
       </div>
     </div>
   </div>
+
+  </div>
+
+  <!-- RIGHT SIDE PANEL (wide screens only) — live mirror of connection + recent events -->
+  <aside class="side" id="sideRightPanel">
+    <div class="glass">
+      <div class="card-head"><h2 style="font-size:15px;">Quick Glance</h2></div>
+      <div class="quick-row">
+        <div class="k">Connection</div>
+        <div class="v offline" id="sideConnText">Offline</div>
+      </div>
+      <div class="quick-row">
+        <div class="k">Last update</div>
+        <div class="v" id="sideLastUpdate">No data yet</div>
+      </div>
+      <div class="quick-row">
+        <div class="k">Events logged</div>
+        <div class="v" id="sideEventCount">0</div>
+      </div>
+    </div>
+    <div class="glass">
+      <div class="card-head"><h2 style="font-size:15px;">Recent Events</h2></div>
+      <div class="mini-hlist" id="sideHistoryList">
+        <div class="mini-empty">Nothing yet — events will show up here.</div>
+      </div>
+    </div>
+  </aside>
 
 </div>
 
@@ -897,20 +1036,38 @@ function renderHistory(){
   document.getElementById('historyCount').textContent = events.length + ' event' + (events.length===1?'':'s');
   if(events.length === 0){
     list.innerHTML = '<div class="empty"><div class="big">📭</div>Events sent from Flask will appear here automatically.</div>';
-    return;
-  }
-  list.innerHTML = events.map(e=>`
-    <div class="hitem ${e.type}">
-      <div class="ico">${iconFor(e.type)}</div>
-      <div class="body">
-        <div class="top">
-          <span class="kind">${e.type}</span>
-          <span class="time">${new Date(e.timestamp).toLocaleTimeString()}</span>
+  }else{
+    list.innerHTML = events.map(e=>`
+      <div class="hitem ${e.type}">
+        <div class="ico">${iconFor(e.type)}</div>
+        <div class="body">
+          <div class="top">
+            <span class="kind">${e.type}</span>
+            <span class="time">${new Date(e.timestamp).toLocaleTimeString()}</span>
+          </div>
+          <div class="meta">${e.confidence}% confidence${e.recorded ? ' · Auto-recorded' : ''}</div>
         </div>
-        <div class="meta">${e.confidence}% confidence${e.recorded ? ' · Auto-recorded' : ''}</div>
       </div>
-    </div>
-  `).join('');
+    `).join('');
+  }
+
+  // mirror into the wide-screen side panel — same underlying data, condensed view
+  const sideCount = document.getElementById('sideEventCount');
+  const sideList = document.getElementById('sideHistoryList');
+  if(sideCount) sideCount.textContent = events.length;
+  if(sideList){
+    if(events.length === 0){
+      sideList.innerHTML = '<div class="mini-empty">Nothing yet — events will show up here.</div>';
+    }else{
+      sideList.innerHTML = events.slice(0,5).map(e=>`
+        <div class="mini-hitem">
+          <div class="ico">${iconFor(e.type)}</div>
+          <div class="kind">${e.type}</div>
+          <div class="conf">${e.confidence}%</div>
+        </div>
+      `).join('');
+    }
+  }
 }
 
 function updateStatusChip(type, confidence, timestamp){
@@ -918,8 +1075,12 @@ function updateStatusChip(type, confidence, timestamp){
   if(!readingEl) return;
   readingEl.textContent = confidence + '%';
   readingEl.classList.toggle('hot', confidence >= 60);
-  document.getElementById('lastUpdateTag').textContent =
-    'Updated ' + new Date(timestamp).toLocaleTimeString();
+  const updatedLabel = 'Updated ' + new Date(timestamp).toLocaleTimeString();
+  document.getElementById('lastUpdateTag').textContent = updatedLabel;
+
+  // mirror into the wide-screen side panel
+  const sideUpdate = document.getElementById('sideLastUpdate');
+  if(sideUpdate) sideUpdate.textContent = updatedLabel;
 }
 
 function recordEvent(evt){
@@ -950,6 +1111,14 @@ function setConnState(online){
   document.getElementById('pollStatusDesc').textContent = online
     ? `Connected · polling ${EVENTS_URL}`
     : `Waiting to reach ${EVENTS_URL || '(no endpoint set)'}`;
+
+  // mirror into the wide-screen side panel
+  const sideConn = document.getElementById('sideConnText');
+  if(sideConn){
+    sideConn.textContent = online ? 'Connected' : 'Offline';
+    sideConn.classList.toggle('online', online);
+    sideConn.classList.toggle('offline', !online);
+  }
 }
 
 async function pollEvents(){
