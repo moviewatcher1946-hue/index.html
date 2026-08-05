@@ -1100,7 +1100,7 @@ function recordEvent(evt){
 }
 
 /* ================= FLASK POLLING ================= */
-let EVENTS_URL = document.getElementById('endpointInput').value.trim();
+let EVENTS_URL;
 let pollTimer = null;
 
 function setConnState(online){
@@ -1210,7 +1210,37 @@ function reconnectCamera(){
   showToast('Reconnecting camera…');
   setTimeout(()=> showToast('Camera reconnected'), 1200);
 }
+// ===== SAVE SETTINGS =====
 
+function saveSettings(){
+  localStorage.setItem("notify", toggleNotify.checked);
+  localStorage.setItem("sound", toggleSound.checked);
+  localStorage.setItem("record", toggleRecord.checked);
+  localStorage.setItem("endpoint", endpointInput.value);
+}
+
+function loadSettings(){
+  if(localStorage.getItem("notify") !== null)
+    toggleNotify.checked = localStorage.getItem("notify") === "true";
+
+  if(localStorage.getItem("sound") !== null)
+    toggleSound.checked = localStorage.getItem("sound") === "true";
+
+  if(localStorage.getItem("record") !== null)
+    toggleRecord.checked = localStorage.getItem("record") === "true";
+
+  if(localStorage.getItem("endpoint") !== null)
+    endpointInput.value = localStorage.getItem("endpoint");
+}
+
+// Save whenever something changes
+toggleNotify.addEventListener("change", saveSettings);
+toggleSound.addEventListener("change", saveSettings);
+toggleRecord.addEventListener("change", saveSettings);
+endpointInput.addEventListener("change", saveSettings);
+
+// Load saved values
+loadSettings();
 /* start polling on load using the default endpoint */
 applyEndpoint();
 
