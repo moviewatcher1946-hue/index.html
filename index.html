@@ -869,7 +869,7 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   100% { box-shadow:0 0 0 2px rgba(255,255,255,.12),0 0 40px rgba(61,141,122,.18),0 0 80px rgba(61,141,122,.09); }
 }
 
-/* Shimmer overlay for  updates */
+/* Shimmer overlay for live updates */
 .scope-shimmer {
   position:absolute;inset:0;pointer-events:none;z-index:6;border-radius:inherit;
   background:linear-gradient(135deg,transparent 30%,rgba(255,255,255,.15) 50%,transparent 70%);
@@ -1612,17 +1612,8 @@ body.booting .conn-pill.revealed {
   50%      { transform:scale(1.035); }
 }
 
-/* Rotating glass ring loader — liquid arc, no progress bar */
-.boot-ring {
-  position:absolute; width:190px; height:190px; border-radius:50%;
-  padding:2px;
-  background:conic-gradient(from 0deg, rgba(61,141,122,0) 0deg, rgba(61,141,122,.85) 60deg, rgba(179,216,168,.9) 150deg, rgba(61,141,122,0) 230deg, rgba(61,141,122,0) 360deg);
-  -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
-  mask:radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
-  animation:bootRingSpin 1.9s cubic-bezier(.45,.05,.55,.95) infinite;
-  filter:drop-shadow(0 0 10px rgba(61,141,122,.35));
-}
-@keyframes bootRingSpin { to { transform:rotate(360deg); } }
+/* Rotating glass ring loader — removed */
+.boot-ring { display:none; }
 
 /* Glass sphere */
 .boot-sphere {
@@ -1681,21 +1672,18 @@ body.booting .conn-pill.revealed {
 }
 @keyframes bootCausticSpin { to { transform:translateZ(0) rotate(360deg); } }
 
-/* Logo emerging from within the glass */
+/* Boot logo — empty div kept for JS .boot-logo-in class hook only */
 .boot-logo {
-  position:relative; z-index:2; width:46px; height:46px;
-  color:var(--accent-2);
-  opacity:0; filter:blur(9px) drop-shadow(0 0 0 rgba(61,141,122,0));
-  transform:scale(.55) translateY(6px);
-  transition:opacity 1.3s cubic-bezier(.22,1,.36,1) .35s,
-             filter 1.3s cubic-bezier(.22,1,.36,1) .35s,
-             transform 1.3s cubic-bezier(.34,1.2,.4,1) .35s;
+  position:relative; z-index:2;
+  width:0; height:0;
+  opacity:0;
+  transition:opacity 1.3s cubic-bezier(.22,1,.36,1) .35s;
 }
-.boot-stage.boot-logo-in .boot-logo {
-  opacity:1; filter:blur(0) drop-shadow(0 2px 10px rgba(61,141,122,.35));
-  transform:scale(1) translateY(0);
-}
-.boot-logo svg { width:100%; height:100%; }
+.boot-stage.boot-logo-in .boot-logo { opacity:1; }
+
+
+
+
 
 /* Sphere → liquid morph → droplet dissolve, triggered when init completes */
 .boot-stage.boot-morph .boot-ring { opacity:0; transition:opacity .3s ease; }
@@ -1721,6 +1709,8 @@ body.booting .conn-pill.revealed {
   box-shadow:0 0 10px rgba(255,255,255,.7), 0 0 2px rgba(61,141,122,.4);
   pointer-events:none;
   will-change:transform, opacity;
+  /* Droplets hidden — JS timing/reveal logic runs unchanged */
+  opacity:0 !important;
 }
 
 @media (prefers-reduced-motion:reduce) {
@@ -1741,11 +1731,8 @@ body.booting .conn-pill.revealed {
   </div>
   <div class="boot-particles" id="bootParticles"></div>
   <div class="boot-stage" id="bootStage">
-    <div class="boot-ring"></div>
     <div class="boot-sphere" id="bootSphere">
-      <div class="boot-logo" id="bootLogo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s7 7.5 7 12a7 7 0 0 1-14 0c0-4.5 7-12 7-12z"/></svg>
-      </div>
+      <div class="boot-logo" id="bootLogo"></div>
     </div>
   </div>
 </div>
@@ -1940,7 +1927,7 @@ body.booting .conn-pill.revealed {
           <div class="tag" id="liveFeedTag">CAM 01</div>
         </div>
         <div class="scope" id="mainScope">
-          <img ="http://192.168.1.187/stream" width="640" height="480">
+          <img src="" alt="Live feed" width="640" height="480">
           <!-- Offline state (added): shown automatically when the stream img fails to load -->
           <div class="scope-offline" aria-hidden="true">
             <div class="scope-offline-vignette"></div>
@@ -2011,7 +1998,7 @@ body.booting .conn-pill.revealed {
           <div class="tag">CAM 01</div>
         </div>
         <div class="scope" id="cameraScope" style="aspect-ratio:4/3;">
-          <img src="http://192.168.1.187/stream" width="640" height="480">
+          <img src="" alt="Camera feed" width="640" height="480">
           <!-- Offline state (added): shown automatically when the stream img fails to load -->
           <div class="scope-offline" aria-hidden="true">
             <div class="scope-offline-vignette"></div>
@@ -3071,30 +3058,67 @@ function reconnectCamera() {
    fades back to the live stream once the image loads again. Does not
    touch Flask polling, event polling, analytics, or emergency mode. ---- */
 const CAMERA_OFFLINE_RETRY_MS = 4000;
+// How long to wait after a successful HTTP load before checking naturalWidth.
+// Gives the browser time to decode the first frame of an MJPEG stream.
+const CAMERA_DECODE_GRACE_MS = 2500;
+
 function initCameraOfflineState(scopeEl) {
   if (!scopeEl) return;
   const img = scopeEl.querySelector('img');
   if (!img) return;
-  const originalSrc = img.getAttribute('src');
   let retryTimer = null;
+  let decodeTimer = null;
+
+  function getCurrentSrc() { return img.getAttribute('src') || ''; }
+
+  function goOffline() {
+    if (!scopeEl.classList.contains('is-offline')) scopeEl.classList.add('is-offline');
+  }
+  function goOnline() {
+    scopeEl.classList.remove('is-offline');
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+    if (decodeTimer) { clearTimeout(decodeTimer); decodeTimer = null; }
+  }
 
   function scheduleRetry() {
     if (retryTimer) return;
+    const src = getCurrentSrc();
+    if (!src) return; // no src — stay offline, no loop
     retryTimer = setTimeout(() => {
       retryTimer = null;
-      const sep = originalSrc.indexOf('?') === -1 ? '?' : '&';
-      img.src = originalSrc + sep + '_retry=' + Date.now();
+      const sep = src.indexOf('?') === -1 ? '?' : '&';
+      img.src = src + sep + '_retry=' + Date.now();
     }, CAMERA_OFFLINE_RETRY_MS);
   }
 
+  // Hard failure (404, network error, CORS block, etc.)
   img.addEventListener('error', () => {
-    if (!scopeEl.classList.contains('is-offline')) scopeEl.classList.add('is-offline');
+    if (decodeTimer) { clearTimeout(decodeTimer); decodeTimer = null; }
+    goOffline();
     scheduleRetry();
   });
+
+  // HTTP success — but the response might be empty, a 0-byte image,
+  // or a stream that never produces a decodable frame. Wait a short
+  // grace period then check naturalWidth: 0 means no pixels rendered.
   img.addEventListener('load', () => {
-    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-    scopeEl.classList.remove('is-offline');
+    if (decodeTimer) clearTimeout(decodeTimer);
+    decodeTimer = setTimeout(() => {
+      decodeTimer = null;
+      if (img.naturalWidth === 0) {
+        // URL responded but produced no image data
+        goOffline();
+        scheduleRetry();
+      } else {
+        goOnline();
+      }
+    }, CAMERA_DECODE_GRACE_MS);
   });
+
+  // Immediately offline when src is empty
+  if (!getCurrentSrc()) {
+    goOffline();
+  }
 }
 initCameraOfflineState(document.getElementById('mainScope'));
 initCameraOfflineState(document.getElementById('cameraScope'));
