@@ -2931,9 +2931,7 @@ function finishBoot() {
 
   bootFinished = true;
 
-  // Continue polling Flask
-  applyEndpoint();
-
+ 
   // Update analytics immediately
   updateAnalytics();
 
@@ -2956,7 +2954,8 @@ function finishBoot() {
   }
 }
 
-runBootSequence();
+applyEndpoint();   // Start trying to connect to Flask immediately
+runBootSequence(); // Play the boot animation
 </script>
 </body>
 </html>
