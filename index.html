@@ -849,6 +849,123 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 }
 
 /* ============================================================
+   CAMERA OFFLINE STATE — visionOS-style disconnect overlay
+   (added: replaces broken-image fallback with a premium built-in
+   offline animation; hooks into existing .scope/img via JS below)
+   ============================================================ */
+.scope img {
+  transition:opacity .6s cubic-bezier(.22,1,.36,1),filter .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1);
+}
+.scope.is-offline img { opacity:0;filter:blur(7px) saturate(55%);transform:scale(1.025); }
+
+.scope-offline {
+  position:absolute;inset:0;z-index:2;border-radius:inherit;overflow:hidden;
+  opacity:0;pointer-events:none;
+  background:radial-gradient(120% 100% at 50% 22%,#0d100e 0%,#07080a 55%,#020202 100%);
+  transition:opacity .7s cubic-bezier(.22,1,.36,1);
+}
+.scope.is-offline .scope-offline { opacity:1; }
+
+/* Film grain — CSS-only fractal noise, drifted via transform (GPU) */
+.scope-offline-grain {
+  position:absolute;inset:-25%;pointer-events:none;opacity:.045;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size:160px 160px;
+  animation:scopeOfflineGrainShift 9s steps(6) infinite;
+}
+@keyframes scopeOfflineGrainShift {
+  0%   { transform:translate3d(0,0,0); }
+  100% { transform:translate3d(-38px,-26px,0); }
+}
+
+/* Faint moving glass reflection streak */
+.scope-offline-sheen {
+  position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(116deg,transparent 42%,rgba(255,255,255,.045) 48%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.045) 52%,transparent 58%);
+  animation:scopeOfflineSheenDrift 11s ease-in-out infinite alternate;
+}
+@keyframes scopeOfflineSheenDrift {
+  0%   { transform:translate3d(-8%,-3%,0) skewX(-3deg); }
+  100% { transform:translate3d(8%,3%,0) skewX(2deg); }
+}
+
+/* Slow, broad glass shimmer sweep */
+.scope-offline-shimmer {
+  position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.028) 45%,rgba(255,255,255,.06) 50%,rgba(255,255,255,.028) 55%,transparent 100%);
+  animation:scopeOfflineShimmerSweep 16s ease-in-out infinite alternate;
+}
+@keyframes scopeOfflineShimmerSweep {
+  0%   { transform:translate3d(-55%,0,0) rotate(6deg);opacity:.5; }
+  100% { transform:translate3d(55%,0,0) rotate(6deg);opacity:1; }
+}
+
+/* Vignette */
+.scope-offline-vignette {
+  position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 100% at 50% 50%,transparent 38%,rgba(0,0,0,.55) 100%);
+}
+
+/* Soft breathing glow behind the text */
+.scope-offline-glow {
+  position:absolute;left:50%;top:46%;width:230px;height:230px;
+  transform:translate3d(-50%,-50%,0);pointer-events:none;
+  background:radial-gradient(circle,rgba(255,255,255,.055) 0%,transparent 68%);
+  animation:scopeOfflineGlowBreath 4.5s ease-in-out infinite;
+}
+@keyframes scopeOfflineGlowBreath {
+  0%,100% { opacity:.55;transform:translate3d(-50%,-50%,0) scale(1); }
+  50%     { opacity:1;transform:translate3d(-50%,-50%,0) scale(1.08); }
+}
+
+/* Tiny floating dust particles */
+.scope-offline-dust { position:absolute;inset:0;pointer-events:none; }
+.scope-offline-dust span {
+  position:absolute;width:2px;height:2px;border-radius:50%;
+  background:rgba(255,255,255,.55);opacity:0;
+  animation-name:scopeOfflineDustFloat;animation-timing-function:ease-in-out;animation-iteration-count:infinite;
+}
+@keyframes scopeOfflineDustFloat {
+  0%   { transform:translate3d(0,0,0);opacity:0; }
+  12%  { opacity:.6; }
+  50%  { opacity:.3; }
+  88%  { opacity:0; }
+  100% { transform:translate3d(5px,-24px,0);opacity:0; }
+}
+
+/* Centered content */
+.scope-offline-content {
+  position:absolute;inset:0;z-index:1;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  transform:translate3d(0,6px,0);opacity:0;
+  transition:transform .7s cubic-bezier(.22,1,.36,1),opacity .7s ease;
+}
+.scope.is-offline .scope-offline-content { transform:translate3d(0,0,0);opacity:1; }
+.scope-offline-title {
+  font-size:14.5px;font-weight:600;letter-spacing:2.2px;text-transform:uppercase;
+  color:rgba(255,255,255,.90);text-shadow:0 1px 12px rgba(0,0,0,.4);
+}
+.scope-offline-subtitle {
+  font-size:12px;font-weight:400;letter-spacing:.2px;color:rgba(255,255,255,.42);
+}
+.scope-offline-ring {
+  width:30px;height:30px;margin-top:14px;border-radius:50%;
+  background:conic-gradient(from 0deg,rgba(255,255,255,.85) 0deg 38deg,transparent 38deg 90deg,rgba(255,255,255,.5) 90deg 128deg,transparent 128deg 180deg,rgba(255,255,255,.85) 180deg 218deg,transparent 218deg 270deg,rgba(255,255,255,.5) 270deg 308deg,transparent 308deg 360deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2.5px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2.5px));
+  animation:scopeOfflineRingSpin 1.6s linear infinite;
+}
+@keyframes scopeOfflineRingSpin { to { transform:rotate(360deg); } }
+
+/* Pause offline animations when tab hidden (perf) */
+.scope-offline.paused,.scope-offline.paused * { animation-play-state:paused !important; }
+
+@media (prefers-reduced-motion:reduce) {
+  .scope-offline-grain,.scope-offline-sheen,.scope-offline-shimmer,.scope-offline-glow,
+  .scope-offline-dust span,.scope-offline-ring { animation:none !important; }
+}
+
+/* ============================================================
    STATUS CHIPS with animate-in
    ============================================================ */
 .chip-row { display:flex;flex-direction:column;gap:10px;margin-top:16px; }
@@ -1701,6 +1818,27 @@ body.booting .conn-pill.revealed {
         </div>
         <div class="scope" id="mainScope">
           <img src="https://media.tenor.com/VFFJ8Ei3C2IAAAAC/rickroll-rick.gif" alt="Live feed" width="640" height="480">
+          <!-- Offline state (added): shown automatically when the stream img fails to load -->
+          <div class="scope-offline" aria-hidden="true">
+            <div class="scope-offline-vignette"></div>
+            <div class="scope-offline-grain"></div>
+            <div class="scope-offline-sheen"></div>
+            <div class="scope-offline-shimmer"></div>
+            <div class="scope-offline-glow"></div>
+            <div class="scope-offline-dust">
+              <span style="top:22%;left:18%;animation-delay:.0s;animation-duration:7.5s;"></span>
+              <span style="top:64%;left:74%;animation-delay:1.2s;animation-duration:8.5s;"></span>
+              <span style="top:40%;left:52%;animation-delay:2.4s;animation-duration:6.5s;"></span>
+              <span style="top:78%;left:30%;animation-delay:3.6s;animation-duration:9s;"></span>
+              <span style="top:15%;left:82%;animation-delay:.6s;animation-duration:7s;"></span>
+              <span style="top:55%;left:12%;animation-delay:4.2s;animation-duration:8s;"></span>
+            </div>
+            <div class="scope-offline-content">
+              <div class="scope-offline-title">Camera Offline</div>
+              <div class="scope-offline-subtitle">Attempting to reconnect…</div>
+              <div class="scope-offline-ring"></div>
+            </div>
+          </div>
           <div class="scope-reflection"></div>
           <div class="scope-edge-light"></div>
           <div class="scope-glow"></div>
@@ -1751,6 +1889,27 @@ body.booting .conn-pill.revealed {
         </div>
         <div class="scope" id="cameraScope" style="aspect-ratio:4/3;">
           <img src="https://media.tenor.com/VFFJ8Ei3C2IAAAAC/rickroll-rick.gif" alt="Camera feed" width="640" height="480">
+          <!-- Offline state (added): shown automatically when the stream img fails to load -->
+          <div class="scope-offline" aria-hidden="true">
+            <div class="scope-offline-vignette"></div>
+            <div class="scope-offline-grain"></div>
+            <div class="scope-offline-sheen"></div>
+            <div class="scope-offline-shimmer"></div>
+            <div class="scope-offline-glow"></div>
+            <div class="scope-offline-dust">
+              <span style="top:24%;left:20%;animation-delay:.3s;animation-duration:7.8s;"></span>
+              <span style="top:60%;left:70%;animation-delay:1.5s;animation-duration:8.2s;"></span>
+              <span style="top:42%;left:48%;animation-delay:2.7s;animation-duration:6.8s;"></span>
+              <span style="top:80%;left:34%;animation-delay:3.9s;animation-duration:9.2s;"></span>
+              <span style="top:18%;left:78%;animation-delay:.9s;animation-duration:7.2s;"></span>
+              <span style="top:52%;left:16%;animation-delay:4.5s;animation-duration:8.4s;"></span>
+            </div>
+            <div class="scope-offline-content">
+              <div class="scope-offline-title">Camera Offline</div>
+              <div class="scope-offline-subtitle">Attempting to reconnect…</div>
+              <div class="scope-offline-ring"></div>
+            </div>
+          </div>
           <div class="scope-reflection"></div>
           <div class="scope-edge-light"></div>
           <div class="scope-glow"></div>
@@ -2781,6 +2940,46 @@ function reconnectCamera() {
   showToast('Reconnecting camera…');
   setTimeout(() => { showToast('Camera reconnected'); animateScopeShimmer(document.getElementById('cameraScope')); }, 1200);
 }
+
+/* ---- Camera offline state (added) ------------------------------------
+   Hooks into each stream <img>'s load/error events so a broken/unavailable
+   MJPEG feed automatically crossfades into the built-in visionOS-style
+   offline animation defined in CSS (.scope-offline), then automatically
+   fades back to the live stream once the image loads again. Does not
+   touch Flask polling, event polling, analytics, or emergency mode. ---- */
+const CAMERA_OFFLINE_RETRY_MS = 4000;
+function initCameraOfflineState(scopeEl) {
+  if (!scopeEl) return;
+  const img = scopeEl.querySelector('img');
+  if (!img) return;
+  const originalSrc = img.getAttribute('src');
+  let retryTimer = null;
+
+  function scheduleRetry() {
+    if (retryTimer) return;
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      const sep = originalSrc.indexOf('?') === -1 ? '?' : '&';
+      img.src = originalSrc + sep + '_retry=' + Date.now();
+    }, CAMERA_OFFLINE_RETRY_MS);
+  }
+
+  img.addEventListener('error', () => {
+    if (!scopeEl.classList.contains('is-offline')) scopeEl.classList.add('is-offline');
+    scheduleRetry();
+  });
+  img.addEventListener('load', () => {
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+    scopeEl.classList.remove('is-offline');
+  });
+}
+initCameraOfflineState(document.getElementById('mainScope'));
+initCameraOfflineState(document.getElementById('cameraScope'));
+
+// Pause the (already GPU-cheap) offline animations while the tab isn't visible
+document.addEventListener('visibilitychange', () => {
+  document.querySelectorAll('.scope-offline').forEach(el => el.classList.toggle('paused', document.hidden));
+});
 
 /* ============ PERSIST SETTINGS ============ */
 function saveSettings() {
