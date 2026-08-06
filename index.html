@@ -2526,7 +2526,9 @@ document.querySelectorAll('.an-leg-row').forEach(row => {
 /* ============================================================
    EVENT HISTORY
    ============================================================ */
-let events = [], seenIds = new Set();
+let events = [];
+let seenIds = new Set();
+let firstPoll = true;
 renderHistory();
 
 function iconFor(type) {
@@ -2676,6 +2678,43 @@ async function pollEvents() {
     if (!res.ok) throw new Error('bad status');
     const data = await res.json();
     setConnState(true);
+     // First poll: synchronize with existing events but DON'T trigger alarms
+if (firstPoll) {
+
+  if (Array.isArray(data)) {
+
+    // Mark all existing events as already seen
+    data.forEach(e => {
+      if (e && e.id !== undefined) {
+        seenIds.add(e.id);
+      }
+    });
+
+    // Populate history without notifications
+    events = data
+      .filter(e => e && e.id !== undefined)
+      .sort((a, b) => b.id - a.id)
+      .map(e => ({
+        id: e.id,
+        type: (e.type || "unknown").toLowerCase(),
+        confidence: Math.round(e.confidence ?? 0),
+        timestamp: e.timestamp || new Date().toISOString(),
+        recorded: true
+      }));
+
+    renderHistory();
+
+    // Update the status cards from the newest event
+    if (events.length > 0) {
+      const latest = events[0];
+      updateStatusChip(latest.type, latest.confidence, latest.timestamp);
+    }
+
+  }
+
+  firstPoll = false;
+  return; // Don't process existing events as new
+}
     if (Array.isArray(data)) {
       data
         .filter(e => e && e.id !== undefined && !seenIds.has(e.id))
