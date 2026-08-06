@@ -869,7 +869,7 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   100% { box-shadow:0 0 0 2px rgba(255,255,255,.12),0 0 40px rgba(61,141,122,.18),0 0 80px rgba(61,141,122,.09); }
 }
 
-/* Shimmer overlay for live updates */
+/* Shimmer overlay for  updates */
 .scope-shimmer {
   position:absolute;inset:0;pointer-events:none;z-index:6;border-radius:inherit;
   background:linear-gradient(135deg,transparent 30%,rgba(255,255,255,.15) 50%,transparent 70%);
@@ -1940,7 +1940,7 @@ body.booting .conn-pill.revealed {
           <div class="tag" id="liveFeedTag">CAM 01</div>
         </div>
         <div class="scope" id="mainScope">
-          <img ="http://192.168.1.187/stream" alt="Live feed" width="640" height="480">
+          <img ="http://192.168.1.187/stream" width="640" height="480">
           <!-- Offline state (added): shown automatically when the stream img fails to load -->
           <div class="scope-offline" aria-hidden="true">
             <div class="scope-offline-vignette"></div>
