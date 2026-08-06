@@ -97,21 +97,29 @@ body {
 }
 
 /* Emergency body state */
-/* Android fix: animating filter on <body> forces the entire page into a
-   single GPU compositing layer, destroying all child backdrop-filter
-   compositing contexts and causing green-rectangle artifacts on every
-   blurred glass panel. Use a ::before overlay with opacity instead — the
-   visual result is indistinguishable and it never touches the body layer. */
-body.emergency::before {
-  /* Reuse the existing body::before slot — we add a second rule that
-     overlays a tinted veil via mix-blend-mode so the grain layer stays. */
+/* Android fix: never animate filter on <body> — it collapses all
+   backdrop-filter compositing contexts. Instead we use a dedicated
+   fixed <div id="emergencyVeil"> (added to HTML below) whose opacity
+   we animate. Purely compositor-side, never triggers a repaint of
+   glass panels, preserves the original pulsing red-tint look. */
+body.emergency #emergencyVeil {
+  opacity: 1;
+  pointer-events: none;
 }
-body.emergency {
+#emergencyVeil {
+  position: fixed; inset: 0; z-index: 99;
+  background: radial-gradient(ellipse at 50% 40%, rgba(255,32,16,.22) 0%, rgba(255,32,16,.12) 55%, rgba(255,32,16,.06) 100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .6s cubic-bezier(.22,1,.36,1);
+  animation: none;
+}
+body.emergency #emergencyVeil {
   animation: emergencyBgPulse 1.8s ease-in-out infinite;
 }
 @keyframes emergencyBgPulse {
   0%,100% { opacity: 1; }
-  50%      { opacity: .90; }
+  50%      { opacity: .45; }
 }
 
 body::before {
@@ -170,214 +178,138 @@ body::after {
   z-index: 100;
   pointer-events: none;
   opacity: 0;
-  transition: opacity .6s cubic-bezier(.22,1,.36,1);
+  transition: opacity .4s ease;
 }
 .emergency-overlay.active { opacity: 1; pointer-events: auto; }
 
-/* Pulsing red screen tint */
+/* Serious red screen tint — no pulse, just a steady dark veil */
 .em-tint {
   position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 40%, rgba(255,32,16,.18) 0%, rgba(255,32,16,.08) 60%, transparent 100%);
-  animation: emTintPulse 1.8s ease-in-out infinite;
-}
-@keyframes emTintPulse {
-  0%,100% { opacity: .6; }
-  50%      { opacity: 1; }
+  background: rgba(180, 10, 0, .10);
 }
 
-/* Warning border beacon */
+/* Thin border — a quiet signal, not a strobe */
 .em-border {
   position: absolute; inset: 0;
-  border: 3px solid var(--emergency-red);
-  box-shadow:
-    inset 0 0 60px rgba(255,32,16,.25),
-    inset 0 0 120px rgba(255,32,16,.10),
-    0 0 60px rgba(255,32,16,.30),
-    0 0 120px rgba(255,32,16,.15);
-  animation: emBorderFlash 1.1s ease-in-out infinite;
+  border: 2px solid rgba(200, 20, 10, .40);
   pointer-events: none;
-}
-@keyframes emBorderFlash {
-  0%,100% { opacity: 1; }
-  50%      { opacity: .4; }
 }
 
-/* Rotating alarm rings */
-.em-rings {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 300px; height: 300px;
-  pointer-events: none;
-}
-.em-ring {
-  position: absolute; inset: 0;
-  border-radius: 50%;
-  border: 2px solid rgba(255,32,16,.4);
-  animation: emRingExpand 2.4s ease-out infinite;
-}
-.em-ring:nth-child(2) { animation-delay: .8s; }
-.em-ring:nth-child(3) { animation-delay: 1.6s; }
-@keyframes emRingExpand {
-  0%   { transform: scale(.3); opacity: .9; }
-  100% { transform: scale(1.6); opacity: 0; }
-}
+/* Radar — hidden, kept in DOM for JS compatibility */
+.em-radar { display: none; }
 
-/* Radar scanner */
-.em-radar {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 220px; height: 220px;
-  border-radius: 50%;
-  border: 1px solid rgba(255,32,16,.20);
-  overflow: hidden;
-  pointer-events: none;
-}
-.em-radar::before {
-  content: "";
-  position: absolute; top: 50%; left: 50%;
-  width: 110px; height: 2px;
-  background: linear-gradient(90deg, rgba(255,32,16,.0) 0%, rgba(255,32,16,.8) 100%);
-  transform-origin: left center;
-  transform: translateY(-50%);
-  animation: emRadarSpin 2.2s linear infinite;
-  box-shadow: 0 0 8px rgba(255,32,16,.5);
-}
-@keyframes emRadarSpin { to { transform: translateY(-50%) rotate(360deg); } }
-.em-radar::after {
-  content: "";
-  position: absolute; inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg, rgba(255,32,16,.15) 0deg, transparent 90deg, transparent 360deg);
-  animation: emRadarSpin 2.2s linear infinite;
-}
+/* Expanding rings — hidden */
+.em-rings { display: none; }
 
 /* Emergency center panel */
 .em-panel {
   position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%) scale(.85);
-  width: min(440px, 92vw);
-  background: rgba(255,255,255,.92);
-  backdrop-filter: blur(32px) saturate(180%);
-  -webkit-backdrop-filter: blur(32px) saturate(180%);
-  border: 1px solid rgba(255,32,16,.35);
-  border-top-color: rgba(255,255,255,.90);
-  border-radius: 28px;
-  box-shadow:
-    0 0 0 1px rgba(255,32,16,.15),
-    0 8px 32px rgba(255,32,16,.22),
-    0 24px 60px rgba(255,32,16,.14),
-    0 48px 100px rgba(0,0,0,.12);
-  padding: 32px 28px 28px;
+  inset: 0;
+  background: rgba(180, 10, 0, .96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  transition: transform .55s cubic-bezier(.34,1.56,.64,1), opacity .55s ease;
+  gap: 0;
+  transform: none;
+  transition: opacity .35s ease;
   opacity: 0;
 }
 .emergency-overlay.active .em-panel {
-  transform: translate(-50%, -50%) scale(1);
+  transform: none;
   opacity: 1;
-  transition-delay: .15s;
+  transition-delay: .1s;
 }
 
+/* Icon */
 .em-icon-wrap {
-  width: 72px; height: 72px;
-  margin: 0 auto 16px;
-  border-radius: 50%;
-  background: rgba(255,32,16,.10);
-  border: 2px solid rgba(255,32,16,.30);
+  width: 56px; height: 56px;
+  margin-bottom: 20px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.25);
   display: flex; align-items: center; justify-content: center;
-  font-size: 32px;
-  animation: emIconSpin 4s linear infinite;
-  box-shadow: 0 0 20px rgba(255,32,16,.20);
-}
-@keyframes emIconSpin {
-  0%,100% { box-shadow: 0 0 20px rgba(255,32,16,.20); }
-  50%      { box-shadow: 0 0 40px rgba(255,32,16,.45); }
+  font-size: 26px;
+  color: #fff;
 }
 
+/* Severity label */
 .em-alarm-text {
   font-family: var(--f-display);
   font-size: 11px; font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: var(--emergency-red);
-  margin-bottom: 6px;
-  animation: emTextBlink 1.4s ease-in-out infinite;
-}
-@keyframes emTextBlink {
-  0%,100% { opacity: 1; }
-  50%      { opacity: .4; }
+  color: rgba(255,255,255,.60);
+  margin-bottom: 8px;
 }
 
+/* Hazard name */
 .em-hazard {
   font-family: var(--f-display);
-  font-size: 28px; font-weight: 800;
+  font-size: 36px; font-weight: 700;
   letter-spacing: -.5px;
-  color: var(--text);
-  margin-bottom: 4px;
+  color: #fff;
+  margin-bottom: 12px;
 }
 
 .em-meta {
-  font-size: 13px; color: var(--muted);
-  margin-bottom: 18px;
-  display: flex; justify-content: center; gap: 16px;
+  font-size: 13px; color: rgba(255,255,255,.65);
+  margin-bottom: 20px;
+  display: flex; gap: 24px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 .em-meta span { display: flex; align-items: center; gap: 4px; }
-.em-meta strong { color: var(--text); font-weight: 600; }
+.em-meta strong { color: #fff; font-weight: 600; }
 
 .em-message {
-  font-size: 14.5px; font-weight: 500;
-  color: var(--text);
-  line-height: 1.55;
-  padding: 14px 18px;
-  background: rgba(255,32,16,.06);
-  border-radius: 16px;
-  border: 1px solid rgba(255,32,16,.14);
-  margin-bottom: 18px;
+  font-size: 15px; font-weight: 400;
+  color: rgba(255,255,255,.80);
+  line-height: 1.6;
+  max-width: 360px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  margin-bottom: 32px;
 }
 
 .em-dismiss {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-size: 13px; font-weight: 600;
-  color: var(--muted);
-  background: rgba(255,255,255,.85);
-  border: 1px solid rgba(60,60,67,.12);
-  border-radius: 999px;
-  padding: 9px 20px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600;
+  color: rgba(180,10,0,.90);
+  background: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 13px 32px;
   cursor: pointer;
-  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease;
+  transition: background .15s ease, box-shadow .15s ease;
+  min-width: 200px;
 }
-.em-dismiss:hover { transform: scale(1.04); box-shadow: 0 4px 16px rgba(0,0,0,.10); }
-.em-timer { font-size: 11px; color: var(--muted-2); margin-top: 8px; }
+.em-dismiss:hover { background: rgba(255,255,255,.90); box-shadow: 0 4px 16px rgba(0,0,0,.20); }
+.em-timer { font-size: 11px; color: rgba(255,255,255,.45); margin-top: 12px; }
 
-/* Flashing light effects */
-.em-flash-l, .em-flash-r {
-  position: absolute;
-  top: 0; width: 80px; height: 100%;
-  pointer-events: none;
-}
-.em-flash-l { left: 0; background: linear-gradient(90deg, rgba(255,32,16,.18), transparent); animation: flashLeft 1.1s ease-in-out infinite; }
-.em-flash-r { right: 0; background: linear-gradient(-90deg, rgba(255,32,16,.18), transparent); animation: flashRight 1.1s ease-in-out infinite .55s; }
-@keyframes flashLeft  { 0%,100%{opacity:0} 30%,70%{opacity:1} }
-@keyframes flashRight { 0%,100%{opacity:0} 30%,70%{opacity:1} }
+/* Side flashes — removed */
+.em-flash-l, .em-flash-r { display: none; }
 
-/* Screen shake on activation */
+/* Screen shake on activation — kept */
 @keyframes screenShake {
-  0%       { transform: translate(0,0) rotate(0deg); }
-  10%      { transform: translate(-3px,2px) rotate(-.3deg); }
-  20%      { transform: translate(3px,-2px) rotate(.3deg); }
-  30%      { transform: translate(-2px,3px) rotate(-.2deg); }
-  40%      { transform: translate(2px,-1px) rotate(.2deg); }
-  50%      { transform: translate(-1px,2px) rotate(-.1deg); }
-  60%      { transform: translate(1px,-1px) rotate(.1deg); }
-  70%      { transform: translate(0,1px) rotate(0deg); }
-  80%      { transform: translate(0,-1px); }
+  0%       { transform: translate(0,0); }
+  15%      { transform: translate(-2px, 1px); }
+  30%      { transform: translate(2px, -1px); }
+  45%      { transform: translate(-1px, 2px); }
+  60%      { transform: translate(1px, -1px); }
+  75%      { transform: translate(-1px, 1px); }
   90%,100% { transform: translate(0,0); }
 }
-body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
+body.shaking { animation: screenShake .4s ease; }
 
 /* Emergency glass tint */
 .glass.emergency-tint {
@@ -1796,17 +1728,15 @@ body.booting .conn-pill.revealed {
 
   <!-- Alert panel -->
   <div class="em-panel">
-    <div class="em-icon-wrap" id="emIcon">⚠️</div>
-    <div class="em-alarm-text">⬥ Emergency Alert ⬥</div>
+    <div class="em-icon-wrap" id="emIcon">⚠</div>
+    <div class="em-alarm-text">Hazard Alert</div>
     <div class="em-hazard" id="emHazard">Fire Detected</div>
     <div class="em-meta">
-      <span>⏱ <strong id="emTime">—</strong></span>
-      <span>📊 <strong id="emConf">—</strong> confidence</span>
+      <span>Time: <strong id="emTime">—</strong></span>
+      <span>Confidence: <strong id="emConf">—</strong></span>
     </div>
     <div class="em-message" id="emMessage">High-confidence hazard detected. Please follow emergency protocols and evacuate if necessary.</div>
-    <button class="em-dismiss" onclick="dismissEmergency()">
-      ✕ Dismiss Alert
-    </button>
+    <button class="em-dismiss" onclick="dismissEmergency()">Acknowledge &amp; Dismiss</button>
     <div class="em-timer" id="emTimer">Auto-dismissing in <span id="emCountdown">10</span>s</div>
   </div>
 </div>
