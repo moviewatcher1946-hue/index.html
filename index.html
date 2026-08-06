@@ -638,6 +638,18 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   padding:22px;margin-bottom:18px;overflow:hidden;
   transition:box-shadow .45s cubic-bezier(.25,.46,.45,.94),transform .35s cubic-bezier(.25,.46,.45,.94),filter .35s ease;
   will-change:transform;
+  /* Mobile compositing fix (added): on iOS Safari / Chrome Android, an
+     animated child (.glass-sweep) sharing this backdrop-filter + rounded
+     + overflow:hidden box can force the backdrop-filter's own blur buffer
+     onto a layer that briefly ignores the border-radius clip, showing up
+     as a hard-edged rectangle. isolation + contain:paint make this element
+     a strict, self-contained compositing/clip boundary; the mask-image is
+     the standard WebKit hack that forces Safari to honor border-radius
+     clipping on a backdrop-filter element. None of these change how the
+     card looks — they only affect how it's clipped/composited. */
+  isolation:isolate;
+  contain:paint;
+  -webkit-mask-image:-webkit-radial-gradient(white,black);
 }
 .glass::before {
   content:"";position:absolute;top:0;left:0;right:0;height:52%;
@@ -668,11 +680,22 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   100% { transform: translateY(0) scale(1); filter: brightness(1); }
 }
 
-/* Glass highlight sweep on update */
+/* Glass highlight sweep on update
+   Mobile compositing fix (added): keep this layer promoted (translateZ(0))
+   for its entire lifecycle — including the resting state before
+   .sweeping is added — instead of only while animating. Promoting a
+   layer mid-animation is what tends to trigger the one-frame "unclipped
+   rectangle" glitch on mobile GPU compositors; staying promoted the
+   whole time avoids that promotion/demotion transition. overflow:hidden
+   + inherited border-radius give it its own explicit clip as well,
+   on top of the parent .glass clip. Values/keyframe shape are unchanged. */
 .glass-sweep {
   position:absolute;inset:0;pointer-events:none;z-index:10;
+  overflow:hidden;border-radius:inherit;
   background:linear-gradient(110deg,transparent 0%,rgba(255,255,255,.55) 45%,rgba(255,255,255,.28) 55%,transparent 100%);
-  transform:skewX(-15deg) translateX(-200%);border-radius:inherit;
+  transform:translateZ(0) skewX(-15deg) translateX(-200%);
+  will-change:transform;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
   opacity:0;
 }
 .glass.sweeping .glass-sweep {
@@ -680,8 +703,8 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   animation:glassSweep .75s cubic-bezier(.25,.46,.45,.94) forwards;
 }
 @keyframes glassSweep {
-  0%   { transform:skewX(-15deg) translateX(-200%); }
-  100% { transform:skewX(-15deg) translateX(280%); }
+  0%   { transform:translateZ(0) skewX(-15deg) translateX(-200%); }
+  100% { transform:translateZ(0) skewX(-15deg) translateX(280%); }
 }
 
 .glass-edge {
@@ -1536,17 +1559,35 @@ body.booting .conn-pill.revealed {
     0 4px 14px rgba(20,60,30,.10);
   overflow:hidden;
   transition:transform 1.1s cubic-bezier(.65,0,.35,1), border-radius 1.1s cubic-bezier(.65,0,.35,1), opacity .6s ease .4s, filter .9s ease;
+  /* Mobile compositing fix (added): the ::before reflection below is
+     intentionally oversized (inset:-20%) and animates its own transform
+     inside this backdrop-filter + overflow:hidden + border-radius:50%
+     sphere, which then also scales and reshapes its border-radius during
+     the boot-morph dissolve. On iOS Safari / Chrome Android that combo
+     can let the backdrop-filter's blur buffer briefly render as an
+     unclipped rectangle instead of following the circular/blob clip.
+     isolation + contain:paint make this element a hard clip/compositing
+     boundary, the mask-image forces Safari to honor the clip on a
+     backdrop-filter element, and keeping it pre-promoted (translateZ(0))
+     avoids a layer promotion glitch when the morph animation starts.
+     Purely a compositing fix — the visible reflection/morph is unchanged. */
+  isolation:isolate;
+  contain:paint;
+  -webkit-mask-image:-webkit-radial-gradient(white,black);
+  transform:translateZ(0);
 }
 /* Moving internal reflection sweeping across the sphere */
 .boot-sphere::before {
   content:""; position:absolute; inset:-20%;
   background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.55) 48%, rgba(255,255,255,.15) 55%, transparent 70%);
   animation:bootSphereSheen 3.4s ease-in-out infinite;
+  will-change:transform;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
 }
 @keyframes bootSphereSheen {
-  0%   { transform:translateX(-60%) translateY(-10%) rotate(0deg); }
-  50%  { transform:translateX(20%) translateY(10%) rotate(4deg); }
-  100% { transform:translateX(-60%) translateY(-10%) rotate(0deg); }
+  0%   { transform:translateZ(0) translateX(-60%) translateY(-10%) rotate(0deg); }
+  50%  { transform:translateZ(0) translateX(20%) translateY(10%) rotate(4deg); }
+  100% { transform:translateZ(0) translateX(-60%) translateY(-10%) rotate(0deg); }
 }
 /* Refracted background caustic swirl */
 .boot-sphere::after {
@@ -1555,8 +1596,10 @@ body.booting .conn-pill.revealed {
   mix-blend-mode:soft-light;
   animation:bootCausticSpin 6s linear infinite;
   opacity:.85;
+  will-change:transform;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
 }
-@keyframes bootCausticSpin { to { transform:rotate(360deg); } }
+@keyframes bootCausticSpin { to { transform:translateZ(0) rotate(360deg); } }
 
 /* Logo emerging from within the glass */
 .boot-logo {
@@ -1584,10 +1627,10 @@ body.booting .conn-pill.revealed {
   opacity:0; transform:scale(1.3);
 }
 @keyframes bootMorph {
-  0%   { transform:scale(1); border-radius:50%; }
-  35%  { transform:scale(1.28,1.12); border-radius:44% 56% 52% 48%/50% 46% 54% 50%; }
-  65%  { transform:scale(1.5,1.65); border-radius:60% 40% 44% 56%/56% 60% 40% 44%; opacity:.7; }
-  100% { transform:scale(2.4); border-radius:50%; opacity:0; }
+  0%   { transform:translateZ(0) scale(1); border-radius:50%; }
+  35%  { transform:translateZ(0) scale(1.28,1.12); border-radius:44% 56% 52% 48%/50% 46% 54% 50%; }
+  65%  { transform:translateZ(0) scale(1.5,1.65); border-radius:60% 40% 44% 56%/56% 60% 40% 44%; opacity:.7; }
+  100% { transform:translateZ(0) scale(2.4); border-radius:50%; opacity:0; }
 }
 
 /* Individual droplets flying out toward widget positions */
