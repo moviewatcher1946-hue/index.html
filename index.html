@@ -2648,29 +2648,57 @@ let wasOnline = false;
 
 function setConnState(online) {
   if (emergencyActive) return;
+
   const pill = document.getElementById('connPill');
   pill.classList.toggle('online', online);
   pill.classList.toggle('offline', !online);
-  document.getElementById('connText').textContent = online ? 'Connected' : 'Offline';
+
+  document.getElementById('connText').textContent =
+    online ? 'Connected' : 'Offline';
+
   document.getElementById('pollStatusDesc').textContent = online
     ? `Connected · polling ${EVENTS_URL}`
     : `Waiting to reach ${EVENTS_URL || '(no endpoint set)'}`;
+
   const sideConn = document.getElementById('sideConnText');
   if (sideConn) {
     sideConn.textContent = online ? 'Connected' : 'Offline';
     sideConn.classList.toggle('online', online);
     sideConn.classList.toggle('offline', !online);
   }
-  if (online && !wasOnline) {
-    animateConnectBadge();
-    // Sweep all visible cards on first connect
-    document.querySelectorAll('.glass').forEach((g, i) => {
-      setTimeout(() => sweepCard(g), i * 60);
-    });
+
+  // First successful connection
+if (online && !wasOnline) {
+
+  // Connected while boot animation is still playing.
+  // Save it and let finishBoot() play the animation.
+  if (!bootFinished) {
+    flaskConnected = true;
+    wasOnline = online;
+    return;
   }
-  wasOnline = online;
+
+  // Prevent replaying the connection animation.
+  if (syncAnimationPlayed) {
+    wasOnline = online;
+    return;
+  }
+
+  syncAnimationPlayed = true;
+
+  animateConnectBadge();
+
+  document.querySelectorAll('.glass').forEach((g, i) => {
+    setTimeout(() => sweepCard(g), i * 60);
+  });
+
+  const scope = document.getElementById('mainScope');
+  if (scope) {
+    animateScopeShimmer(scope);
+  }
 }
 
+wasOnline = online;
 async function pollEvents() {
   if (!EVENTS_URL) return;
   try {
@@ -2895,11 +2923,37 @@ function launchDroplets() {
 }
 
 let bootFinished = false;
+let flaskConnected = false;
+let syncAnimationPlayed = false;
+
 function finishBoot() {
   if (bootFinished) return;
+
   bootFinished = true;
+
+  // Continue polling Flask
   applyEndpoint();
+
+  // Update analytics immediately
   updateAnalytics();
+
+  // If Flask connected while the boot animation was playing,
+  // play the dashboard reveal now.
+  if (flaskConnected && !syncAnimationPlayed) {
+
+    syncAnimationPlayed = true;
+
+    animateConnectBadge();
+
+    document.querySelectorAll('.glass').forEach((g, i) => {
+      setTimeout(() => sweepCard(g), i * 60);
+    });
+
+    const scope = document.getElementById('mainScope');
+    if (scope) {
+      animateScopeShimmer(scope);
+    }
+  }
 }
 
 runBootSequence();
