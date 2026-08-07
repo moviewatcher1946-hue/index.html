@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Sentry — Vision Warning System</title>
+<script>
+(function(){
+  try {
+    if (/Android/i.test(navigator.userAgent || '')) {
+      document.documentElement.classList.add('is-android');
+    }
+  } catch (e) {}
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
@@ -96,22 +105,24 @@ body {
   transition: background 1.2s ease;
 }
 
-/* Emergency body state */
-/* Android fix: animating filter on <body> forces the entire page into a
-   single GPU compositing layer, destroying all child backdrop-filter
-   compositing contexts and causing green-rectangle artifacts on every
-   blurred glass panel. Use a ::before overlay with opacity instead — the
-   visual result is indistinguishable and it never touches the body layer. */
-body.emergency::before {
-  /* Reuse the existing body::before slot — we add a second rule that
-     overlays a tinted veil via mix-blend-mode so the grain layer stays. */
+body.emergency #emergencyVeil {
+  opacity: 1;
+  pointer-events: none;
 }
-body.emergency {
+#emergencyVeil {
+  position: fixed; inset: 0; z-index: 99;
+  background: radial-gradient(ellipse at 50% 40%, rgba(255,32,16,.22) 0%, rgba(255,32,16,.12) 55%, rgba(255,32,16,.06) 100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .6s cubic-bezier(.22,1,.36,1);
+  animation: none;
+}
+body.emergency #emergencyVeil {
   animation: emergencyBgPulse 1.8s ease-in-out infinite;
 }
 @keyframes emergencyBgPulse {
   0%,100% { opacity: 1; }
-  50%      { opacity: .90; }
+  50%      { opacity: .45; }
 }
 
 body::before {
@@ -122,11 +133,6 @@ body::before {
     repeating-linear-gradient(7deg, rgba(61,141,122,.055) 0px, rgba(61,141,122,.055) 1px, transparent 1px, transparent 9px),
     repeating-linear-gradient(-7deg, rgba(61,141,122,.055) 0px, rgba(61,141,122,.055) 1px, transparent 1px, transparent 9px);
   pointer-events: none; z-index: 0;
-  /* Android fix: animate transform instead of background-position.
-     background-position changes trigger full repaints on Chromium Android,
-     which can expose the GPU backing texture as a green rectangle when
-     the fixed element shares a compositing context with backdrop-filter
-     children. A translate3d-based steps animation is compositor-only. */
   animation: grainShift 12s steps(4) infinite;
 }
 @keyframes grainShift {
@@ -150,11 +156,6 @@ body::after {
   pointer-events: none; z-index: 0;
 }
 @keyframes ambientDrift {
-  /* Android fix: removed opacity animation — the range .91–1 is invisible
-     to users but forces the compositor to re-composite every frame, which
-     can expose the GPU backing texture of backdrop-filter descendants as
-     green rectangles. Transform-only animations stay on the compositor
-     thread and never trigger a texture re-upload. */
   0%   { transform:scale(1) translate(0,0); }
   25%  { transform:scale(1.03) translate(.8%,-.4%); }
   50%  { transform:scale(.98) translate(-.6%,.8%); }
@@ -170,131 +171,59 @@ body::after {
   z-index: 100;
   pointer-events: none;
   opacity: 0;
-  transition: opacity .6s cubic-bezier(.22,1,.36,1);
+  transition: opacity .4s ease;
 }
 .emergency-overlay.active { opacity: 1; pointer-events: auto; }
 
-/* Pulsing red screen tint */
 .em-tint {
   position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 40%, rgba(255,32,16,.18) 0%, rgba(255,32,16,.08) 60%, transparent 100%);
-  animation: emTintPulse 1.8s ease-in-out infinite;
-}
-@keyframes emTintPulse {
-  0%,100% { opacity: .6; }
-  50%      { opacity: 1; }
+  background: rgba(180, 10, 0, .10);
 }
 
-/* Warning border beacon */
 .em-border {
   position: absolute; inset: 0;
-  border: 3px solid var(--emergency-red);
-  box-shadow:
-    inset 0 0 60px rgba(255,32,16,.25),
-    inset 0 0 120px rgba(255,32,16,.10),
-    0 0 60px rgba(255,32,16,.30),
-    0 0 120px rgba(255,32,16,.15);
-  animation: emBorderFlash 1.1s ease-in-out infinite;
+  border: 2px solid rgba(200, 20, 10, .40);
   pointer-events: none;
 }
-@keyframes emBorderFlash {
-  0%,100% { opacity: 1; }
-  50%      { opacity: .4; }
-}
 
-/* Rotating alarm rings */
-.em-rings {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 300px; height: 300px;
-  pointer-events: none;
-}
-.em-ring {
-  position: absolute; inset: 0;
-  border-radius: 50%;
-  border: 2px solid rgba(255,32,16,.4);
-  animation: emRingExpand 2.4s ease-out infinite;
-}
-.em-ring:nth-child(2) { animation-delay: .8s; }
-.em-ring:nth-child(3) { animation-delay: 1.6s; }
-@keyframes emRingExpand {
-  0%   { transform: scale(.3); opacity: .9; }
-  100% { transform: scale(1.6); opacity: 0; }
-}
+.em-radar { display: none; }
+.em-rings { display: none; }
 
-/* Radar scanner */
-.em-radar {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 220px; height: 220px;
-  border-radius: 50%;
-  border: 1px solid rgba(255,32,16,.20);
-  overflow: hidden;
-  pointer-events: none;
-}
-.em-radar::before {
-  content: "";
-  position: absolute; top: 50%; left: 50%;
-  width: 110px; height: 2px;
-  background: linear-gradient(90deg, rgba(255,32,16,.0) 0%, rgba(255,32,16,.8) 100%);
-  transform-origin: left center;
-  transform: translateY(-50%);
-  animation: emRadarSpin 2.2s linear infinite;
-  box-shadow: 0 0 8px rgba(255,32,16,.5);
-}
-@keyframes emRadarSpin { to { transform: translateY(-50%) rotate(360deg); } }
-.em-radar::after {
-  content: "";
-  position: absolute; inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg, rgba(255,32,16,.15) 0deg, transparent 90deg, transparent 360deg);
-  animation: emRadarSpin 2.2s linear infinite;
-}
-
-/* Emergency center panel */
 .em-panel {
   position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%) scale(.85);
-  width: min(440px, 92vw);
-  background: rgba(255,255,255,.92);
-  backdrop-filter: blur(32px) saturate(180%);
-  -webkit-backdrop-filter: blur(32px) saturate(180%);
-  border: 1px solid rgba(255,32,16,.35);
-  border-top-color: rgba(255,255,255,.90);
-  border-radius: 28px;
-  box-shadow:
-    0 0 0 1px rgba(255,32,16,.15),
-    0 8px 32px rgba(255,32,16,.22),
-    0 24px 60px rgba(255,32,16,.14),
-    0 48px 100px rgba(0,0,0,.12);
-  padding: 32px 28px 28px;
+  inset: 0;
+  background: rgba(180, 10, 0, .96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  transition: transform .55s cubic-bezier(.34,1.56,.64,1), opacity .55s ease;
+  gap: 0;
+  transform: none;
+  transition: opacity .35s ease;
   opacity: 0;
 }
 .emergency-overlay.active .em-panel {
-  transform: translate(-50%, -50%) scale(1);
+  transform: none;
   opacity: 1;
-  transition-delay: .15s;
+  transition-delay: .1s;
 }
 
 .em-icon-wrap {
-  width: 72px; height: 72px;
-  margin: 0 auto 16px;
-  border-radius: 50%;
-  background: rgba(255,32,16,.10);
-  border: 2px solid rgba(255,32,16,.30);
+  width: 56px; height: 56px;
+  margin-bottom: 20px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.25);
   display: flex; align-items: center; justify-content: center;
-  font-size: 32px;
-  animation: emIconSpin 4s linear infinite;
-  box-shadow: 0 0 20px rgba(255,32,16,.20);
-}
-@keyframes emIconSpin {
-  0%,100% { box-shadow: 0 0 20px rgba(255,32,16,.20); }
-  50%      { box-shadow: 0 0 40px rgba(255,32,16,.45); }
+  font-size: 26px;
+  color: #fff;
 }
 
 .em-alarm-text {
@@ -302,84 +231,68 @@ body::after {
   font-size: 11px; font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: var(--emergency-red);
-  margin-bottom: 6px;
-  animation: emTextBlink 1.4s ease-in-out infinite;
-}
-@keyframes emTextBlink {
-  0%,100% { opacity: 1; }
-  50%      { opacity: .4; }
+  color: rgba(255,255,255,.60);
+  margin-bottom: 8px;
 }
 
 .em-hazard {
   font-family: var(--f-display);
-  font-size: 28px; font-weight: 800;
+  font-size: 36px; font-weight: 700;
   letter-spacing: -.5px;
-  color: var(--text);
-  margin-bottom: 4px;
+  color: #fff;
+  margin-bottom: 12px;
 }
 
 .em-meta {
-  font-size: 13px; color: var(--muted);
-  margin-bottom: 18px;
-  display: flex; justify-content: center; gap: 16px;
+  font-size: 13px; color: rgba(255,255,255,.65);
+  margin-bottom: 20px;
+  display: flex; gap: 24px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 .em-meta span { display: flex; align-items: center; gap: 4px; }
-.em-meta strong { color: var(--text); font-weight: 600; }
+.em-meta strong { color: #fff; font-weight: 600; }
 
 .em-message {
-  font-size: 14.5px; font-weight: 500;
-  color: var(--text);
-  line-height: 1.55;
-  padding: 14px 18px;
-  background: rgba(255,32,16,.06);
-  border-radius: 16px;
-  border: 1px solid rgba(255,32,16,.14);
-  margin-bottom: 18px;
+  font-size: 15px; font-weight: 400;
+  color: rgba(255,255,255,.80);
+  line-height: 1.6;
+  max-width: 360px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  margin-bottom: 32px;
 }
 
 .em-dismiss {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-size: 13px; font-weight: 600;
-  color: var(--muted);
-  background: rgba(255,255,255,.85);
-  border: 1px solid rgba(60,60,67,.12);
-  border-radius: 999px;
-  padding: 9px 20px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600;
+  color: rgba(180,10,0,.90);
+  background: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 13px 32px;
   cursor: pointer;
-  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease;
+  transition: background .15s ease, box-shadow .15s ease;
+  min-width: 200px;
 }
-.em-dismiss:hover { transform: scale(1.04); box-shadow: 0 4px 16px rgba(0,0,0,.10); }
-.em-timer { font-size: 11px; color: var(--muted-2); margin-top: 8px; }
+.em-dismiss:hover { background: rgba(255,255,255,.90); box-shadow: 0 4px 16px rgba(0,0,0,.20); }
+.em-timer { font-size: 11px; color: rgba(255,255,255,.45); margin-top: 12px; }
 
-/* Flashing light effects */
-.em-flash-l, .em-flash-r {
-  position: absolute;
-  top: 0; width: 80px; height: 100%;
-  pointer-events: none;
-}
-.em-flash-l { left: 0; background: linear-gradient(90deg, rgba(255,32,16,.18), transparent); animation: flashLeft 1.1s ease-in-out infinite; }
-.em-flash-r { right: 0; background: linear-gradient(-90deg, rgba(255,32,16,.18), transparent); animation: flashRight 1.1s ease-in-out infinite .55s; }
-@keyframes flashLeft  { 0%,100%{opacity:0} 30%,70%{opacity:1} }
-@keyframes flashRight { 0%,100%{opacity:0} 30%,70%{opacity:1} }
+.em-flash-l, .em-flash-r { display: none; }
 
-/* Screen shake on activation */
 @keyframes screenShake {
-  0%       { transform: translate(0,0) rotate(0deg); }
-  10%      { transform: translate(-3px,2px) rotate(-.3deg); }
-  20%      { transform: translate(3px,-2px) rotate(.3deg); }
-  30%      { transform: translate(-2px,3px) rotate(-.2deg); }
-  40%      { transform: translate(2px,-1px) rotate(.2deg); }
-  50%      { transform: translate(-1px,2px) rotate(-.1deg); }
-  60%      { transform: translate(1px,-1px) rotate(.1deg); }
-  70%      { transform: translate(0,1px) rotate(0deg); }
-  80%      { transform: translate(0,-1px); }
+  0%       { transform: translate(0,0); }
+  15%      { transform: translate(-2px, 1px); }
+  30%      { transform: translate(2px, -1px); }
+  45%      { transform: translate(-1px, 2px); }
+  60%      { transform: translate(1px, -1px); }
+  75%      { transform: translate(-1px, 1px); }
   90%,100% { transform: translate(0,0); }
 }
-body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
+body.shaking { animation: screenShake .4s ease; }
 
-/* Emergency glass tint */
 .glass.emergency-tint {
   border-color: rgba(255,32,16,.25) !important;
   box-shadow: var(--shadow-card), 0 0 0 1px rgba(255,32,16,.08), 0 0 20px rgba(255,32,16,.06) !important;
@@ -397,12 +310,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 }
 .ray::before {
   content:""; position:absolute; inset:0;
-  /* Android fix: replaced filter:blur() on the ray pseudo-element with a
-     radial gradient that emulates soft edges. filter:blur on a child of a
-     fixed compositing layer creates a new stacking context that can corrupt
-     the GPU tile of overlapping backdrop-filter panels, causing green or
-     transparent-rectangle artifacts on Chromium Android / Samsung Internet.
-     The visual difference is imperceptible at these low opacities. */
   background:
     radial-gradient(ellipse var(--w,80px) 100% at 50% 50%,
       rgba(255,255,255,var(--op,.06)) 0%,
@@ -427,11 +334,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   animation:
     bokehFloat var(--bd,20s) var(--bdelay,0s) ease-in-out infinite alternate,
     bokehFade  var(--bd,20s) var(--bdelay,0s) ease-in-out infinite alternate;
-  /* Android fix: removed filter:blur() — even sub-pixel blur values create
-     a new GPU compositing layer for each bokeh orb. Six blurred fixed orbs
-     above backdrop-filter panels causes the compositor to run out of GPU
-     tile memory, producing green/black corrupted rectangles during scroll.
-     The radial gradient already gives a naturally soft appearance. */
 }
 @keyframes bokehFloat {
   0%   { transform:translate(0,0) scale(1); }
@@ -638,7 +540,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 .conn-pill.offline .conn-dot { background:var(--red);box-shadow:0 0 8px rgba(255,59,48,.65); }
 .conn-pill.offline { color:#b3261e; }
 
-/* Emergency connection state */
 .conn-pill.emergency {
   background:rgba(255,32,16,.15);
   border-color:rgba(255,32,16,.40);
@@ -660,7 +561,7 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 }
 
 /* ============================================================
-   GLASS CARD — with refresh highlight
+   GLASS CARD
    ============================================================ */
 .glass {
   position:relative;
@@ -672,15 +573,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   padding:22px;margin-bottom:18px;overflow:hidden;
   transition:box-shadow .45s cubic-bezier(.25,.46,.45,.94),transform .35s cubic-bezier(.25,.46,.45,.94),filter .35s ease;
   will-change:transform;
-  /* Mobile compositing fix (added): on iOS Safari / Chrome Android, an
-     animated child (.glass-sweep) sharing this backdrop-filter + rounded
-     + overflow:hidden box can force the backdrop-filter's own blur buffer
-     onto a layer that briefly ignores the border-radius clip, showing up
-     as a hard-edged rectangle. isolation + contain:paint make this element
-     a strict, self-contained compositing/clip boundary; the mask-image is
-     the standard WebKit hack that forces Safari to honor border-radius
-     clipping on a backdrop-filter element. None of these change how the
-     card looks — they only affect how it's clipped/composited. */
   isolation:isolate;
   contain:paint;
   -webkit-mask-image:-webkit-radial-gradient(white,black);
@@ -693,23 +585,9 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 .glass::after {
   content:"";position:absolute;inset:0;
   background:radial-gradient(300px 240px at var(--mx) var(--my),rgba(255,255,255,.62) 0%,rgba(255,255,255,.18) 45%,transparent 72%);
-  /* Android fix: removed mix-blend-mode:overlay. On Chromium Android,
-     a mix-blend-mode layer directly inside a backdrop-filter + overflow:hidden
-     + border-radius parent triggers the "unclipped blur backing" bug:
-     the GPU compositor ignores the border-radius clip on the blend layer and
-     renders the full rectangular backing texture, which appears green or
-     as a solid-color flash. Straight alpha overlay at .45 opacity produces
-     an indistinguishable highlight without the two-pass compositor path. */
   opacity:0;transition:opacity .45s ease;pointer-events:none;z-index:2;border-radius:inherit;
 }
 .glass:hover::after { opacity:.45; }
-/* Android fix: idle-sheen animated CSS custom properties (--mx/--my via
-   @property). Animating a registered custom property that feeds into a
-   gradient on a child of a backdrop-filter parent causes Chromium Android
-   to re-rasterize the gradient layer on every frame, which races the blur
-   texture upload and produces random green rectangles. Replace with a
-   CSS transform-based animation that moves a fixed gradient instead of
-   repainting it; visually identical but purely compositor-side. */
 .glass.idle-sheen::after {
   opacity:.40;
   background:linear-gradient(135deg,transparent 20%,rgba(255,255,255,.45) 50%,transparent 80%);
@@ -721,32 +599,16 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   66%      { transform:translateX(0%) translateY(60%) rotate(0deg); }
 }
 
-/* Dashboard refresh animation */
 .glass.refreshing {
   animation: cardRefresh .7s cubic-bezier(.34,1.56,.64,1);
 }
 @keyframes cardRefresh {
-  /* Android fix: removed filter:brightness() from this keyframe animation.
-     Animating any filter property on a backdrop-filter element forces the
-     GPU to invalidate and re-upload the blur backing texture every frame,
-     which manifests as a one-frame flash of the raw (unclipped, green)
-     GPU tile. The transform-only animation gives the same spring-bounce
-     feel without triggering a filter re-composite. */
   0%   { transform: translateY(0) scale(1); }
   25%  { transform: translateY(-3px) scale(1.008); }
   60%  { transform: translateY(1px) scale(.998); }
   100% { transform: translateY(0) scale(1); }
 }
 
-/* Glass highlight sweep on update
-   Mobile compositing fix (added): keep this layer promoted (translateZ(0))
-   for its entire lifecycle — including the resting state before
-   .sweeping is added — instead of only while animating. Promoting a
-   layer mid-animation is what tends to trigger the one-frame "unclipped
-   rectangle" glitch on mobile GPU compositors; staying promoted the
-   whole time avoids that promotion/demotion transition. overflow:hidden
-   + inherited border-radius give it its own explicit clip as well,
-   on top of the parent .glass clip. Values/keyframe shape are unchanged. */
 .glass-sweep {
   position:absolute;inset:0;pointer-events:none;z-index:10;
   overflow:hidden;border-radius:inherit;
@@ -814,7 +676,7 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 }
 
 /* ============================================================
-   CAMERA SCOPE — premium glass display
+   CAMERA SCOPE
    ============================================================ */
 .scope {
   position:relative;width:100%;aspect-ratio:16/10;background:#060e08;
@@ -831,7 +693,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 }
 .scope img { display:block;width:100%;height:100%;object-fit:cover; }
 
-/* Reflection streaks */
 .scope-reflection {
   position:absolute;inset:0;pointer-events:none;z-index:4;
   background:
@@ -845,7 +706,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   100% { opacity:1;transform:skewX(1deg) translateX(2%); }
 }
 
-/* Edge lighting */
 .scope-edge-light {
   position:absolute;inset:0;pointer-events:none;z-index:5;border-radius:20px;
   box-shadow:
@@ -856,7 +716,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
     inset 0 -1px 0 rgba(255,255,255,.06);
 }
 
-/* Ambient glow frame */
 .scope-glow {
   position:absolute;inset:-4px;pointer-events:none;z-index:-1;
   border-radius:24px;
@@ -869,7 +728,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   100% { box-shadow:0 0 0 2px rgba(255,255,255,.12),0 0 40px rgba(61,141,122,.18),0 0 80px rgba(61,141,122,.09); }
 }
 
-/* Shimmer overlay for live updates */
 .scope-shimmer {
   position:absolute;inset:0;pointer-events:none;z-index:6;border-radius:inherit;
   background:linear-gradient(135deg,transparent 30%,rgba(255,255,255,.15) 50%,transparent 70%);
@@ -915,7 +773,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   50%      { opacity:.38;box-shadow:0 0 0 4px rgba(255,59,48,.10),0 0 4px rgba(255,59,48,.35); }
 }
 
-/* Emergency camera glow */
 .scope.emergency-cam {
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.35),
@@ -930,9 +787,7 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 }
 
 /* ============================================================
-   CAMERA OFFLINE STATE — visionOS-style disconnect overlay
-   (added: replaces broken-image fallback with a premium built-in
-   offline animation; hooks into existing .scope/img via JS below)
+   CAMERA OFFLINE STATE
    ============================================================ */
 .scope img {
   transition:opacity .6s cubic-bezier(.22,1,.36,1),filter .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1);
@@ -947,7 +802,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 }
 .scope.is-offline .scope-offline { opacity:1; }
 
-/* Film grain — CSS-only fractal noise, drifted via transform (GPU) */
 .scope-offline-grain {
   position:absolute;inset:-25%;pointer-events:none;opacity:.045;mix-blend-mode:overlay;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
@@ -959,7 +813,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   100% { transform:translate3d(-38px,-26px,0); }
 }
 
-/* Faint moving glass reflection streak */
 .scope-offline-sheen {
   position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(116deg,transparent 42%,rgba(255,255,255,.045) 48%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.045) 52%,transparent 58%);
@@ -970,7 +823,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   100% { transform:translate3d(8%,3%,0) skewX(2deg); }
 }
 
-/* Slow, broad glass shimmer sweep */
 .scope-offline-shimmer {
   position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.028) 45%,rgba(255,255,255,.06) 50%,rgba(255,255,255,.028) 55%,transparent 100%);
@@ -981,13 +833,11 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   100% { transform:translate3d(55%,0,0) rotate(6deg);opacity:1; }
 }
 
-/* Vignette */
 .scope-offline-vignette {
   position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(120% 100% at 50% 50%,transparent 38%,rgba(0,0,0,.55) 100%);
 }
 
-/* Soft breathing glow behind the text */
 .scope-offline-glow {
   position:absolute;left:50%;top:46%;width:230px;height:230px;
   transform:translate3d(-50%,-50%,0);pointer-events:none;
@@ -999,7 +849,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   50%     { opacity:1;transform:translate3d(-50%,-50%,0) scale(1.08); }
 }
 
-/* Tiny floating dust particles */
 .scope-offline-dust { position:absolute;inset:0;pointer-events:none; }
 .scope-offline-dust span {
   position:absolute;width:2px;height:2px;border-radius:50%;
@@ -1014,7 +863,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   100% { transform:translate3d(5px,-24px,0);opacity:0; }
 }
 
-/* Centered content */
 .scope-offline-content {
   position:absolute;inset:0;z-index:1;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
@@ -1038,7 +886,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 }
 @keyframes scopeOfflineRingSpin { to { transform:rotate(360deg); } }
 
-/* Pause offline animations when tab hidden (perf) */
 .scope-offline.paused,.scope-offline.paused * { animation-play-state:paused !important; }
 
 @media (prefers-reduced-motion:reduce) {
@@ -1047,7 +894,7 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 }
 
 /* ============================================================
-   STATUS CHIPS with animate-in
+   STATUS CHIPS
    ============================================================ */
 .chip-row { display:flex;flex-direction:column;gap:10px;margin-top:16px; }
 .chip {
@@ -1091,7 +938,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 }
 .chip .reading.hot { color:var(--red);text-shadow:0 0 14px rgba(255,59,48,.30); }
 
-/* Chip pulse on new data */
 .chip.pulsing { animation:chipPulse .6s cubic-bezier(.34,1.56,.64,1); }
 @keyframes chipPulse {
   0%   { transform:scale(1); }
@@ -1147,7 +993,7 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 .btn-row  { display:flex;gap:10px;flex-wrap:wrap;margin-top:18px; }
 
 /* ============================================================
-   TOGGLE SWITCHES — enhanced liquid + spring physics
+   TOGGLE SWITCHES
    ============================================================ */
 .row {
   display:flex;justify-content:space-between;align-items:center;
@@ -1175,7 +1021,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   background:linear-gradient(180deg,rgba(255,255,255,.32),transparent);pointer-events:none;
 }
 
-/* Glass ripple on slider */
 .slider-ripple {
   position:absolute;inset:0;pointer-events:none;border-radius:999px;
   background:radial-gradient(circle at var(--ripple-x,50%) 50%,rgba(255,255,255,.55) 0%,transparent 70%);
@@ -1191,7 +1036,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   100% { opacity:0;transform:scale(1.4); }
 }
 
-/* Liquid thumb */
 .slider::before {
   content:"";position:absolute;width:26px;height:26px;left:2px;top:2px;border-radius:50%;
   background:radial-gradient(circle at 28% 22%,rgba(255,255,255,1.00) 0%,rgba(255,255,255,.78) 28%,rgba(255,255,255,.55) 52%,rgba(255,255,255,.80) 100%);
@@ -1210,11 +1054,9 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   box-shadow:0 1px 0 rgba(255,255,255,.96) inset,0 -1px 0 rgba(0,0,0,.06) inset,0 0 0 0.5px rgba(255,255,255,.50),0 2px 8px rgba(30,80,68,.28),0 4px 14px rgba(30,80,68,.16),0 0 12px rgba(61,141,122,.25);
 }
 
-/* Press: liquid stretch */
 .slider.pressing::before { width:32px; }
 .switch input:checked + .slider.pressing::before { left:-4px;width:32px;transform:translateX(20px); }
 
-/* Spring pop animation */
 .switch.toggling { animation:switchSpring .48s cubic-bezier(.34,1.56,.64,1); }
 @keyframes switchSpring {
   0%   { transform:scale(1); }
@@ -1225,7 +1067,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   100% { transform:scale(1); }
 }
 
-/* Bubble effect on thumb */
 .switch input:checked + .slider.pressing::after {
   content:"";position:absolute;width:40px;height:40px;border-radius:50%;
   background:radial-gradient(circle,rgba(61,141,122,.15) 0%,transparent 70%);
@@ -1259,7 +1100,7 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 .hint { font-size:12px;color:var(--muted-2);margin-top:6px;line-height:1.6; }
 
 /* ============================================================
-   HISTORY LIST — slide-in animation
+   HISTORY LIST
    ============================================================ */
 .hlist { display:flex;flex-direction:column;gap:10px; }
 .hitem {
@@ -1307,7 +1148,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 @keyframes fadeInTime { 0%{opacity:0;transform:translateY(2px)} 100%{opacity:1;transform:none} }
 .hitem .meta { font-size:12.5px;color:var(--muted);margin-top:2px; }
 
-/* New item glow briefly */
 .hitem.glowing { animation:slideInItem .55s cubic-bezier(.34,1.56,.64,1),itemGlow 1.5s ease-out .3s; }
 @keyframes itemGlow {
   0%   { box-shadow:inset 0 1px 0 rgba(255,255,255,.92),0 0 0 2px rgba(61,141,122,.25),0 0 20px rgba(61,141,122,.14); }
@@ -1346,28 +1186,22 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 .toast.critical .dot { background:var(--red);box-shadow:0 0 8px rgba(255,59,48,.75); }
 
 /* ============================================================
-   TAB BAR — premium lens effect
+   TAB BAR
    ============================================================ */
 .tabbar {
-  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:15;
-  display:flex;gap:2px;padding:8px;max-width:calc(100vw - 24px);
+  position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));
+  /* translateX(-50%) centres the bar — this transform must NEVER be
+     overridden or animated. The boot sequence fades opacity only. */
+  transform:translateX(-50%);
+  z-index:15;
+  display:flex;justify-content:center;align-items:center;
+  width:max-content;max-width:min(calc(100vw - 24px),calc(100dvw - 24px));
+  gap:2px;padding:8px;
   background:linear-gradient(172deg,rgba(255,255,255,.82) 0%,rgba(255,255,255,.68) 100%);
-  /* Android fix: reduced blur from 40px→24px and removed brightness() from
-     backdrop-filter. A 40px blur requires a ~80px-radius GPU backing texture
-     expansion on all four sides of the element; on low-VRAM Android devices
-     this overflows the compositor tile budget and the backing texture gets
-     sampled as solid green. brightness() in backdrop-filter also creates a
-     second graphics pass that compounds the tile pressure. 24px is
-     perceptually identical at the tabbar's small size. */
   backdrop-filter:blur(24px) saturate(220%);-webkit-backdrop-filter:blur(24px) saturate(220%);
   border-top:1px solid rgba(255,255,255,.96);border-left:1px solid rgba(255,255,255,.80);
   border-right:1px solid rgba(255,255,255,.65);border-bottom:1px solid rgba(255,255,255,.32);
   border-radius:999px;
-  /* Android fix: added isolation:isolate and contain:paint so the tabbar
-     and its blurred backing are a self-contained compositing boundary.
-     This prevents the tabbar's blur layer from being merged with the
-     body's stacking context, which is what causes border-radius clipping
-     to be ignored by the GPU compositor on Chromium Android. */
   isolation:isolate;
   contain:paint;
   -webkit-mask-image:-webkit-radial-gradient(white,black);
@@ -1383,25 +1217,16 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   overflow:visible;
 }
 
-/* Lens distortion effect — magnified background underneath */
 .tabbar::before {
   content:"";
   position:absolute;top:0;left:0;right:0;height:58%;
   background:linear-gradient(180deg,rgba(255,255,255,.60),rgba(255,255,255,.18) 70%,transparent);
   pointer-events:none;z-index:0;border-radius:999px 999px 0 0;
 }
-/* Strong glass edge refraction */
 .tabbar::after {
   content:"";
   position:absolute;inset:0;border-radius:999px;
   background:radial-gradient(180px 65px at var(--mx) var(--my),rgba(255,255,255,.72),transparent 72%);
-  /* Android fix: removed mix-blend-mode:overlay. A blended layer on top of
-     a backdrop-filter element forces the Chromium Android compositor to run
-     a two-pass compositing path that cannot correctly clip to the
-     border-radius, causing the glass backing texture to flash as a full
-     rectangle. Using straight alpha (no blend mode) with a slightly lower
-     opacity gives the same highlight look without the compositor path that
-     produces the artifacts. */
   opacity:.55;
   animation:tabSheenSweep 8s ease-in-out infinite;
   pointer-events:none;z-index:1;
@@ -1412,7 +1237,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   66%      { --mx:50%;--my:80%; }
 }
 
-/* Curved glass depth lines */
 .tabbar-depth {
   position:absolute;inset:0;border-radius:999px;pointer-events:none;z-index:0;
   box-shadow:
@@ -1462,7 +1286,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
   background:linear-gradient(180deg,rgba(255,255,255,.55),transparent);
   border-radius:999px 999px 0 0;pointer-events:none;
 }
-/* Floating depth illusion */
 .tab-indicator::after {
   content:"";position:absolute;inset:1px;border-radius:999px;
   background:linear-gradient(180deg,rgba(255,255,255,.12),transparent 50%);
@@ -1470,7 +1293,7 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 }
 
 /* ============================================================
-   MOBILE TOUCH — ripple + depth
+   MOBILE TOUCH RIPPLE
    ============================================================ */
 .touch-ripple {
   position:fixed;pointer-events:none;z-index:50;
@@ -1496,7 +1319,7 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 }
 @media (max-width:420px) {
   .title-block h1 { font-size:26px; }
-  .tab { width:min(60px,17vw);padding:9px 2px 8px; }
+  .tab { width:max(48px,min(60px,17vw));padding:9px 2px 8px; }
   .tabbar { gap:0;padding:6px; }
   .glass { padding:18px;border-radius:24px; }
 }
@@ -1506,7 +1329,6 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
    ============================================================ */
 .count-up { display:inline-block; }
 
-/* Event count badge pulse */
 .side-count-pulse { animation:countPulse .5s cubic-bezier(.34,1.56,.64,1); }
 @keyframes countPulse {
   0%   { transform:scale(1); }
@@ -1516,238 +1338,704 @@ body.shaking { animation: screenShake .55s cubic-bezier(.36,.07,.19,.97); }
 }
 
 /* ============================================================
-   BOOT SEQUENCE — visionOS-style liquid glass startup
+   BOOT SEQUENCE
    ============================================================ */
+:root {
+  --boot-droplet-color-a: rgba(180,220,255,.72);
+  --boot-droplet-color-b: rgba(140,200,255,.55);
+  --boot-lens-refract: rgba(255,255,255,.38);
+  --boot-caustic-a: rgba(120,190,255,.14);
+  --boot-caustic-b: rgba(200,240,255,.18);
+  --boot-glow-color: rgba(160,210,255,.20);
+  --boot-ray-color: rgba(220,238,255,.55);
+  --boot-phase1-dur: 1200ms;
+  --boot-phase2-dur: 1600ms;
+  --boot-phase3-dur: 800ms;
+  --boot-phase4-dur: 2800ms;
+  --boot-phase5-dur: 2600ms;
+}
+
 body.booting { overflow:hidden; height:100vh; }
 
-/* Dashboard starts hidden/blurred beneath the boot screen, then each
-   piece is individually revealed by JS with a staggered spring settle */
+/* ── CARDS & CONN-PILL: fade + subtle rise on boot reveal ──────── */
 body.booting .layout .glass,
-body.booting #tabbar,
 body.booting .conn-pill {
   opacity:0;
-  filter:blur(14px);
   transform:translateY(22px) scale(.95);
   pointer-events:none;
-  transition:opacity .85s cubic-bezier(.22,1,.36,1),
-             filter .85s cubic-bezier(.22,1,.36,1),
-             transform .85s cubic-bezier(.34,1.56,.64,1);
+  transition:
+    opacity   2.5s cubic-bezier(.22,1,.36,1),
+    transform 1.2s cubic-bezier(.34,1.56,.64,1);
 }
 body.booting .layout .glass.revealed,
-body.booting #tabbar.revealed,
 body.booting .conn-pill.revealed {
-  opacity:1; filter:blur(0); transform:translateY(0) scale(1); pointer-events:auto;
+  opacity:1; transform:translateY(0) scale(1); pointer-events:auto;
 }
-#tabbar.revealed { transition:opacity .85s cubic-bezier(.22,1,.36,1), filter .9s cubic-bezier(.22,1,.36,1), transform .9s cubic-bezier(.16,1,.3,1); }
+
+/* ── TABBAR: position is always fixed/centred — only opacity animates.
+      The transform:translateX(-50%) that centres the bar must NEVER be
+      touched or overridden by boot or any other CSS rule. ───────────── */
+body.booting #tabbar {
+  opacity:0;
+  pointer-events:none;
+  /* NO transform here — translateX(-50%) on #tabbar itself must stay
+     untouched so the bar is perfectly centred from the first paint */
+  transition: opacity 2.5s cubic-bezier(.22,1,.36,1);
+}
+body.booting #tabbar.revealed {
+  opacity:1;
+  pointer-events:auto;
+}
 
 .boot-screen {
   position:fixed; inset:0; z-index:400;
-  display:flex; align-items:center; justify-content:center;
   overflow:hidden;
-  background:
-    radial-gradient(120% 100% at 50% 8%, rgba(255,255,255,.5), transparent 55%),
-    linear-gradient(215deg, #eaf8f0 0%, #d6ede6 18%, #c2e3d8 36%, #b5d9cc 52%, #c8e8bc 70%, #d8f0c8 85%, #edfae2 100%);
-  backdrop-filter:blur(38px) saturate(160%);
-  -webkit-backdrop-filter:blur(38px) saturate(160%);
-  transition:opacity .7s cubic-bezier(.22,1,.36,1), filter .7s cubic-bezier(.22,1,.36,1);
+  background:#000;
+  transition:opacity 2.8s cubic-bezier(.22,1,.36,1), filter 2.8s cubic-bezier(.22,1,.36,1);
 }
-.boot-screen.boot-out { opacity:0; filter:blur(6px); pointer-events:none; }
+.boot-screen.boot-filled:not(.boot-out) { transition:none; }
+.boot-screen.boot-out  { opacity:0; pointer-events:none; }
 .boot-screen.boot-gone { display:none; }
 
-/* Soft ambient blur veil that slowly clears as init proceeds */
-.boot-veil {
-  position:absolute; inset:0;
-  backdrop-filter:blur(46px); -webkit-backdrop-filter:blur(46px);
-  background:rgba(255,255,255,.02);
-  transition:backdrop-filter 1.4s ease, -webkit-backdrop-filter 1.4s ease;
-}
-.boot-screen.boot-clearing .boot-veil { backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+.boot-veil     { position:absolute; inset:0; opacity:0; pointer-events:none; }
+.boot-particles{ position:absolute; inset:0; pointer-events:none; }
+.boot-particle { position:absolute; opacity:0 !important; }
+.boot-logo     { position:absolute; width:0; height:0; opacity:0; }
+.boot-droplet  { position:fixed; opacity:0 !important; pointer-events:none; }
+.boot-ring     { display:none; }
+@keyframes bootParticleFloat { 0%,100%{ opacity:0; } }
 
-/* Light rays behind the sphere */
-.boot-rays { position:absolute; inset:0; pointer-events:none; }
+.boot-ambient-glow {
+  position:absolute; left:50%; top:50%;
+  width:60vmax; height:60vmax;
+  transform:translate3d(-50%,-50%,0) scale(0);
+  border-radius:50%;
+  background:radial-gradient(circle,
+    rgba(160,210,255,.14) 0%,
+    rgba(140,190,255,.07) 38%,
+    transparent 70%);
+  pointer-events:none;
+  opacity:0;
+  will-change:transform, opacity;
+}
+.boot-screen.phase-glow .boot-ambient-glow {
+  animation:bootAmbientRise 1.4s cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes bootAmbientRise {
+  0%   { opacity:0; transform:translate3d(-50%,-50%,0) scale(0.1); }
+  40%  { opacity:1; }
+  100% { opacity:.65; transform:translate3d(-50%,-50%,0) scale(1); }
+}
+
+.boot-rays { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
 .boot-rays span {
-  position:absolute; top:50%; left:50%; width:2px; height:46vmax;
-  background:linear-gradient(180deg, transparent, rgba(255,255,255,.5) 40%, rgba(255,255,255,.5) 60%, transparent);
-  transform-origin:top center;
-  filter:blur(6px);
+  position:absolute; top:-70%; left:-70%;
+  width:18vmax; height:200vmax;
+  background:linear-gradient(180deg,
+    transparent 0%,
+    rgba(220,238,255,.30) 35%,
+    rgba(255,255,255,.70) 50%,
+    rgba(220,238,255,.30) 65%,
+    transparent 100%);
+  filter:blur(20px);
   opacity:0;
-  animation:bootRayFade 3.6s ease-in-out infinite;
+  mix-blend-mode:screen;
+  transform:rotate(38deg) translate(-150vmax,-150vmax);
+  will-change:transform, opacity;
 }
-.boot-rays span:nth-child(1){ transform:translate(-50%,0) rotate(8deg); animation-delay:.1s; }
-.boot-rays span:nth-child(2){ transform:translate(-50%,0) rotate(-22deg); animation-delay:.6s; }
-.boot-rays span:nth-child(3){ transform:translate(-50%,0) rotate(48deg); animation-delay:1.1s; }
-.boot-rays span:nth-child(4){ transform:translate(-50%,0) rotate(-58deg); animation-delay:1.6s; }
-.boot-rays span:nth-child(5){ transform:translate(-50%,0) rotate(112deg); animation-delay:.35s; }
-.boot-rays span:nth-child(6){ transform:translate(-50%,0) rotate(-100deg); animation-delay:1.9s; }
-@keyframes bootRayFade {
-  0%,100% { opacity:0; }
-  50%      { opacity:.22; }
+.boot-stage.boot-grow .boot-rays span:nth-child(1) { animation:bootBeamSweep 1.8s cubic-bezier(.28,.05,.18,1) 0.0s forwards; }
+.boot-stage.boot-grow .boot-rays span:nth-child(2) { animation:bootBeamSweep 1.8s cubic-bezier(.28,.05,.18,1) 0.2s forwards; }
+.boot-stage.boot-grow .boot-rays span:nth-child(3) { animation:bootBeamSweep 1.8s cubic-bezier(.28,.05,.18,1) 0.4s forwards; }
+.boot-stage.boot-grow .boot-rays span:nth-child(4) { animation:bootBeamSweep 1.8s cubic-bezier(.28,.05,.18,1) 0.6s forwards; }
+@keyframes bootBeamSweep {
+  0%   { opacity:0;   transform:rotate(38deg) translate(-150vmax,-150vmax); }
+  12%  { opacity:.55; }
+  80%  { opacity:.30; }
+  100% { opacity:0;   transform:rotate(38deg) translate(150vmax,150vmax); }
+}
+.boot-rays span:nth-child(5),
+.boot-rays span:nth-child(6) { width:38vmax; filter:blur(32px); }
+.boot-stage.boot-grow .boot-rays span:nth-child(5) { animation:bootBeamAmbient  7.5s ease-in-out 2.0s infinite; }
+.boot-stage.boot-grow .boot-rays span:nth-child(6) { animation:bootBeamAmbient  9.0s ease-in-out 3.6s infinite; }
+@keyframes bootBeamAmbient {
+  0%,100% { opacity:0;   transform:rotate(38deg) translate(-65vmax,-65vmax); }
+  50%     { opacity:.14; transform:rotate(38deg) translate(65vmax,65vmax); }
 }
 
-/* Floating glass particles */
-.boot-particles { position:absolute; inset:0; pointer-events:none; }
-.boot-particle {
-  position:absolute; border-radius:50%;
-  background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.95), rgba(255,255,255,.25) 60%, transparent 75%);
-  box-shadow:0 0 6px rgba(255,255,255,.6);
-  opacity:0;
-  animation:bootParticleFloat var(--pd,7s) ease-in-out var(--pdelay,0s) infinite;
-}
-@keyframes bootParticleFloat {
-  0%   { opacity:0; transform:translate(0,10px) scale(.6); }
-  15%  { opacity:var(--pop,.55); }
-  50%  { opacity:var(--pop,.55); transform:translate(var(--px,10px),var(--py,-16px)) scale(1); }
-  85%  { opacity:var(--pop,.55); }
-  100% { opacity:0; transform:translate(var(--px2,-6px),var(--py2,-30px)) scale(.7); }
-}
-
-/* Central stage holding sphere + ring */
 .boot-stage {
-  position:relative; width:220px; height:220px;
-  display:flex; align-items:center; justify-content:center;
-  animation:bootBreathe 3.2s ease-in-out infinite;
-}
-@keyframes bootBreathe {
-  0%,100% { transform:scale(1); }
-  50%      { transform:scale(1.035); }
+  position:absolute; inset:0;
 }
 
-/* Rotating glass ring loader — liquid arc, no progress bar */
-.boot-ring {
-  position:absolute; width:190px; height:190px; border-radius:50%;
-  padding:2px;
-  background:conic-gradient(from 0deg, rgba(61,141,122,0) 0deg, rgba(61,141,122,.85) 60deg, rgba(179,216,168,.9) 150deg, rgba(61,141,122,0) 230deg, rgba(61,141,122,0) 360deg);
-  -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
-  mask:radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
-  animation:bootRingSpin 1.9s cubic-bezier(.45,.05,.55,.95) infinite;
-  filter:drop-shadow(0 0 10px rgba(61,141,122,.35));
+.boot-droplet-canvas {
+  position:absolute;
+  left:50%; top:50%;
+  transform:translate3d(-50%,-50%,0);
+  border-radius:50%;
+  pointer-events:none;
+  will-change:transform, opacity, border-radius;
+  opacity:0;
 }
-@keyframes bootRingSpin { to { transform:rotate(360deg); } }
 
-/* Glass sphere */
-.boot-sphere {
-  position:relative; width:132px; height:132px; border-radius:50%;
+.boot-drop-body {
+  position:absolute;
+  left:50%; top:50%;
+  width:14vmin; height:14vmin;
+  transform:translate3d(-50%,-50%,0);
+  border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
   background:
-    radial-gradient(circle at 32% 26%, rgba(255,255,255,.95), rgba(255,255,255,.35) 38%, rgba(255,255,255,.10) 60%, rgba(255,255,255,.35) 100%);
-  backdrop-filter:blur(18px) saturate(200%);
-  -webkit-backdrop-filter:blur(18px) saturate(200%);
+    radial-gradient(ellipse 70% 60% at 38% 30%,
+      rgba(255,255,255,.82) 0%,
+      rgba(210,235,255,.55) 22%,
+      rgba(160,210,255,.28) 52%,
+      rgba(80,150,220,.40) 80%,
+      rgba(40,100,180,.60) 100%),
+    radial-gradient(ellipse 45% 55% at 62% 68%,
+      rgba(0,20,60,.28) 0%,
+      transparent 70%);
   box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.75),
-    inset -14px -14px 30px rgba(20,60,45,.10),
-    inset 14px 10px 24px rgba(255,255,255,.55),
-    0 20px 50px rgba(20,60,30,.16),
-    0 4px 14px rgba(20,60,30,.10);
+    inset 0 -2px 8px rgba(0,20,80,.30),
+    inset 0  2px 6px rgba(255,255,255,.65),
+    inset -3px 0 8px rgba(100,170,255,.18),
+    inset  3px 0 8px rgba(200,230,255,.12),
+    0 6px 24px rgba(80,150,220,.22),
+    0 2px 8px  rgba(100,170,255,.16);
+  opacity:0;
+  will-change:transform, border-radius, opacity;
+  pointer-events:none;
+}
+
+.boot-screen.phase-drop .boot-drop-body {
+  animation:bootDropMaterialise 1.4s cubic-bezier(.34,1.28,.64,1) forwards;
+}
+@keyframes bootDropMaterialise {
+  0%   { opacity:0; transform:translate3d(-50%,-50%,0) scale(.06); filter:blur(8px); }
+  18%  { opacity:.7; filter:blur(2px); }
+  42%  { transform:translate3d(-50%,-50%,0) scale(1.08); }
+  58%  { transform:translate3d(-50%,-50%,0) scale(.97); }
+  72%  { transform:translate3d(-50%,-50%,0) scale(1.03); }
+  85%  { transform:translate3d(-50%,-50%,0) scale(.995); }
+  100% { opacity:1; transform:translate3d(-50%,-50%,0) scale(1); filter:blur(0); }
+}
+
+.boot-screen.phase-drop .boot-drop-body.oscillating {
+  animation:bootDropMaterialise 1.4s cubic-bezier(.34,1.28,.64,1) forwards,
+            bootDropOscillate 2.4s ease-in-out 1.5s infinite;
+}
+@keyframes bootDropOscillate {
+  0%,100% { border-radius:50% 50% 50% 50% / 60% 60% 40% 40%; transform:translate3d(-50%,-50%,0) scale(1); }
+  25%     { border-radius:52% 48% 48% 52% / 58% 62% 38% 42%; transform:translate3d(-50%,-51%,0) scale(1.008); }
+  50%     { border-radius:49% 51% 52% 48% / 62% 58% 44% 36%; transform:translate3d(-50%,-49%,0) scale(.996); }
+  75%     { border-radius:51% 49% 47% 53% / 56% 64% 36% 44%; transform:translate3d(-50%,-50.5%,0) scale(1.004); }
+}
+
+.boot-drop-specular {
+  position:absolute;
+  left:50%; top:50%;
+  width:14vmin; height:14vmin;
+  transform:translate3d(-50%,-50%,0);
+  pointer-events:none;
+  opacity:0;
+  will-change:opacity;
+}
+.boot-drop-specular::before {
+  content:"";
+  position:absolute;
+  left:22%; top:16%;
+  width:30%; height:20%;
+  border-radius:50%;
+  background:radial-gradient(ellipse,
+    rgba(255,255,255,.90) 0%,
+    rgba(255,255,255,.40) 55%,
+    transparent 80%);
+  filter:blur(1.2px);
+}
+.boot-drop-specular::after {
+  content:"";
+  position:absolute;
+  left:58%; top:60%;
+  width:14%; height:10%;
+  border-radius:50%;
+  background:radial-gradient(ellipse,
+    rgba(180,220,255,.55) 0%,
+    transparent 75%);
+  filter:blur(1.5px);
+}
+.boot-screen.phase-drop .boot-drop-specular { opacity:1; transition:opacity .8s ease .9s; }
+
+.boot-drop-meniscus {
+  position:absolute;
+  left:50%; top:50%;
+  width:14vmin; height:14vmin;
+  transform:translate3d(-50%,-50%,0);
+  border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,.60),
+    inset 0  1px 0   rgba(255,255,255,.90),
+    inset 0 -1px 0   rgba(140,190,255,.40),
+    0 0 12px rgba(100,170,255,.18);
+  pointer-events:none;
+  opacity:0;
+  will-change:opacity, border-radius;
+}
+.boot-screen.phase-drop .boot-drop-meniscus { opacity:1; transition:opacity .6s ease 1.0s; }
+
+.boot-drop-shadow {
+  position:absolute;
+  left:50%; top:calc(50% + 7.5vmin);
+  width:12vmin; height:2.5vmin;
+  transform:translate3d(-50%,-50%,0);
+  border-radius:50%;
+  background:radial-gradient(ellipse,
+    rgba(0,20,80,.32) 0%,
+    rgba(0,10,40,.12) 50%,
+    transparent 80%);
+  filter:blur(4px);
+  opacity:0;
+  pointer-events:none;
+  will-change:opacity;
+}
+.boot-screen.phase-drop .boot-drop-shadow { opacity:1; transition:opacity .7s ease 1.1s; }
+
+.boot-drop-refraction {
+  position:absolute;
+  left:50%; top:50%;
+  width:18vmin; height:18vmin;
+  transform:translate3d(-50%,-50%,0);
+  pointer-events:none;
+  opacity:0;
   overflow:hidden;
-  transition:transform 1.1s cubic-bezier(.65,0,.35,1), border-radius 1.1s cubic-bezier(.65,0,.35,1), opacity .6s ease .4s, filter .9s ease;
-  /* Mobile compositing fix (added): the ::before reflection below is
-     intentionally oversized (inset:-20%) and animates its own transform
-     inside this backdrop-filter + overflow:hidden + border-radius:50%
-     sphere, which then also scales and reshapes its border-radius during
-     the boot-morph dissolve. On iOS Safari / Chrome Android that combo
-     can let the backdrop-filter's blur buffer briefly render as an
-     unclipped rectangle instead of following the circular/blob clip.
-     isolation + contain:paint make this element a hard clip/compositing
-     boundary, the mask-image forces Safari to honor the clip on a
-     backdrop-filter element, and keeping it pre-promoted (translateZ(0))
-     avoids a layer promotion glitch when the morph animation starts.
-     Purely a compositing fix — the visible reflection/morph is unchanged. */
-  isolation:isolate;
-  contain:paint;
-  -webkit-mask-image:-webkit-radial-gradient(white,black);
-  transform:translateZ(0);
+  border-radius:50%;
 }
-/* Moving internal reflection sweeping across the sphere */
-.boot-sphere::before {
-  content:""; position:absolute; inset:-20%;
-  background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.55) 48%, rgba(255,255,255,.15) 55%, transparent 70%);
-  animation:bootSphereSheen 3.4s ease-in-out infinite;
+.boot-drop-refraction::before {
+  content:"";
+  position:absolute; inset:0;
+  background:linear-gradient(110deg,
+    transparent 28%,
+    rgba(255,255,255,.35) 46%,
+    rgba(200,230,255,.12) 54%,
+    transparent 68%);
+  animation:bootDropRefrSweep 3.2s ease-in-out infinite;
   will-change:transform;
-  backface-visibility:hidden;-webkit-backface-visibility:hidden;
 }
-@keyframes bootSphereSheen {
-  0%   { transform:translateZ(0) translateX(-60%) translateY(-10%) rotate(0deg); }
-  50%  { transform:translateZ(0) translateX(20%) translateY(10%) rotate(4deg); }
-  100% { transform:translateZ(0) translateX(-60%) translateY(-10%) rotate(0deg); }
+@keyframes bootDropRefrSweep {
+  0%   { transform:translateZ(0) translateX(-80%) rotate(-5deg); }
+  50%  { transform:translateZ(0) translateX(20%)  rotate(3deg); }
+  100% { transform:translateZ(0) translateX(-80%) rotate(-5deg); }
 }
-/* Refracted background caustic swirl */
-.boot-sphere::after {
-  content:""; position:absolute; inset:0; border-radius:50%;
-  background:conic-gradient(from 90deg at 50% 50%, rgba(61,141,122,.18), rgba(179,216,168,.22), rgba(163,209,198,.16), rgba(61,141,122,.18));
-  mix-blend-mode:soft-light;
-  animation:bootCausticSpin 6s linear infinite;
-  opacity:.85;
+.boot-screen.phase-drop .boot-drop-refraction { opacity:1; transition:opacity .9s ease 1.3s; }
+
+.boot-screen.phase-morph .boot-drop-body {
+  animation:bootDropToLens .85s cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes bootDropToLens {
+  0%   { border-radius:50% 50% 50% 50% / 60% 60% 40% 40%; }
+  35%  { border-radius:52% 48% 50% 50% / 54% 54% 46% 46%; }
+  100% { border-radius:50%; }
+}
+.boot-screen.phase-morph .boot-drop-meniscus {
+  animation:bootMorphRipple 1.0s cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes bootMorphRipple {
+  0%   { border-radius:50% 50% 50% 50% / 60% 60% 40% 40%; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.60), 0 0 12px rgba(100,170,255,.18); }
+  40%  { box-shadow: inset 0 0 0 2.5px rgba(255,255,255,.80), 0 0 30px rgba(140,200,255,.40); }
+  100% { border-radius:50%; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.50), 0 0 16px rgba(120,180,255,.22); }
+}
+.boot-screen.phase-morph .boot-drop-shadow {
+  animation:bootDropShadowFade .85s ease forwards;
+}
+@keyframes bootDropShadowFade {
+  0%   { opacity:1; }
+  100% { opacity:0; }
+}
+
+.boot-sphere {
+  position:absolute; left:50%; top:50%;
+  width:14vmin; height:14vmin;
+  border-radius:50%;
+  transform:translate3d(-50%,-50%,0) scale(0);
+  transform-origin:50% 50%;
+  opacity:0;
+  will-change:opacity, width, height;
+  filter:drop-shadow(0 1vmin 4vmin rgba(120,180,255,.20))
+         drop-shadow(0 0 2vmin rgba(255,255,255,.14));
+}
+
+.boot-screen.phase-expand .boot-sphere {
+  animation:
+    bootLensAppear  .18s cubic-bezier(.22,1,.36,1) forwards,
+    bootLensExpand 3.80s cubic-bezier(.14,.72,.28,1.00) .18s forwards;
+}
+@keyframes bootLensAppear {
+  0%   { opacity:0; transform:translate3d(-50%,-50%,0) scale(.85); }
+  100% { opacity:1; transform:translate3d(-50%,-50%,0) scale(1); }
+}
+@keyframes bootLensExpand {
+  0%   { width:14vmin;   height:14vmin; }
+  12%  { width:39.2vmin; height:39.2vmin; }
+  22%  { width:35vmin;   height:35vmin; }
+  35%  { width:44.8vmin; height:44.8vmin; }
+  50%  { width:67.2vmin; height:67.2vmin; }
+  70%  { width:105vmin;  height:105vmin; }
+  85%  { width:137.2vmin;height:137.2vmin; }
+  100% { width:168vmin;  height:168vmin; }
+}
+
+.boot-sphere-inner {
+  position:absolute; inset:0; border-radius:50%;
+  overflow:hidden; isolation:isolate; contain:paint;
+  background:
+    radial-gradient(115% 130% at 30% 26%,
+      rgba(255,255,255,.44) 0%,
+      rgba(255,255,255,.16) 16%,
+      rgba(210,232,255,.06) 34%,
+      rgba(10,20,35,.02)    58%,
+      rgba(4,10,20,.18)     84%,
+      rgba(2,6,14,.32)      100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.32),
+    inset -3.2vmin -2.2vmin 6vmin rgba(255,120,130,.10),
+    inset  3.2vmin  2.2vmin 6vmin rgba(120,175,255,.15),
+    inset 0 0 5vmin rgba(255,255,255,.12),
+    inset 0 -3vmin 5vmin rgba(0,10,25,.24);
+  animation:bootLensBreathe 5.6s ease-in-out infinite,
+            bootLensEdgeWave 6.5s ease-in-out infinite;
+  will-change:transform, border-radius;
+}
+@keyframes bootLensBreathe {
+  0%,100% { transform:scale(1); }
+  50%     { transform:scale(1.032); }
+}
+@keyframes bootLensEdgeWave {
+  0%,100% { border-radius:50%; }
+  14%     { border-radius:51.5% 48.5% 49%   51%   / 49.5% 50.5% 48%   52%; }
+  28%     { border-radius:48.5% 51.5% 51%   49%   / 51%   49%   52%   48%; }
+  42%     { border-radius:50.8% 49.2% 48.5% 51.5% / 50%   50%   49.5% 50.5%; }
+  57%     { border-radius:49.5% 50.5% 51.5% 48.5% / 51.5% 48.5% 50.5% 49.5%; }
+  71%     { border-radius:50.5% 49.5% 50%   50%   / 48.5% 51.5% 50%   50%; }
+  85%     { border-radius:49.2% 50.8% 50.8% 49.2% / 50.8% 49.2% 51%   49%; }
+}
+
+.boot-sphere-refraction-wrap {
+  position:absolute; inset:-25%;
   will-change:transform;
-  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+}
+.boot-sphere-refraction {
+  position:absolute; inset:0;
+  background:linear-gradient(115deg,
+    transparent 30%,
+    rgba(255,255,255,.42) 48%,
+    rgba(215,235,255,.15) 56%,
+    transparent 72%);
+  mix-blend-mode:screen;
+  animation:bootLensRefrSweep 4.4s ease-in-out infinite;
+  will-change:transform;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden;
+}
+@keyframes bootLensRefrSweep {
+  0%   { transform:translateZ(0) translateX(-58%) translateY(-8%) rotate(0deg); }
+  50%  { transform:translateZ(0) translateX(20%)  translateY(8%)  rotate(3deg); }
+  100% { transform:translateZ(0) translateX(-58%) translateY(-8%) rotate(0deg); }
+}
+
+.boot-sphere-caustic {
+  position:absolute; inset:0; border-radius:inherit;
+  background:conic-gradient(from 90deg at 46% 46%,
+    rgba(120,190,255,.13),
+    rgba(200,245,255,.17),
+    rgba(140,210,230,.11),
+    rgba(120,190,255,.13));
+  mix-blend-mode:screen;
+  opacity:.35;
+  animation:bootCausticSpin 9.5s linear infinite;
+  will-change:transform, opacity;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden;
 }
 @keyframes bootCausticSpin { to { transform:translateZ(0) rotate(360deg); } }
 
-/* Logo emerging from within the glass */
-.boot-logo {
-  position:relative; z-index:2; width:46px; height:46px;
-  color:var(--accent-2);
-  opacity:0; filter:blur(9px) drop-shadow(0 0 0 rgba(61,141,122,0));
-  transform:scale(.55) translateY(6px);
-  transition:opacity 1.3s cubic-bezier(.22,1,.36,1) .35s,
-             filter 1.3s cubic-bezier(.22,1,.36,1) .35s,
-             transform 1.3s cubic-bezier(.34,1.2,.4,1) .35s;
+.boot-sphere-caustic-b {
+  position:absolute; inset:0; border-radius:inherit;
+  background:conic-gradient(from 210deg at 54% 54%,
+    rgba(255,200,120,.06),
+    rgba(200,240,255,.12),
+    rgba(255,200,120,.06));
+  mix-blend-mode:screen;
+  opacity:.22;
+  animation:bootCausticSpinB 14s linear 1.5s infinite;
+  will-change:transform;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden;
 }
-.boot-stage.boot-logo-in .boot-logo {
-  opacity:1; filter:blur(0) drop-shadow(0 2px 10px rgba(61,141,122,.35));
-  transform:scale(1) translateY(0);
-}
-.boot-logo svg { width:100%; height:100%; }
+@keyframes bootCausticSpinB { to { transform:translateZ(0) rotate(-360deg); } }
 
-/* Sphere → liquid morph → droplet dissolve, triggered when init completes */
-.boot-stage.boot-morph .boot-ring { opacity:0; transition:opacity .3s ease; }
-.boot-stage.boot-morph .boot-sphere {
-  animation:bootMorph .9s cubic-bezier(.65,0,.35,1) forwards;
+.boot-sphere-fresnel {
+  position:absolute; inset:0; border-radius:50%;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,.42),
+    inset -0.9vmin 0 2.6vmin rgba(255,110,120,.11),
+    inset  0.9vmin 0 2.6vmin rgba(120,170,255,.14),
+    inset 0 0 4.8vmin rgba(255,255,255,.09);
+  mix-blend-mode:screen;
+  pointer-events:none;
 }
-.boot-stage.boot-morph .boot-logo {
-  transition:opacity .5s ease, filter .5s ease, transform .5s ease;
-  opacity:0; transform:scale(1.3);
-}
-@keyframes bootMorph {
-  0%   { transform:translateZ(0) scale(1); border-radius:50%; }
-  35%  { transform:translateZ(0) scale(1.28,1.12); border-radius:44% 56% 52% 48%/50% 46% 54% 50%; }
-  65%  { transform:translateZ(0) scale(1.5,1.65); border-radius:60% 40% 44% 56%/56% 60% 40% 44%; opacity:.7; }
-  100% { transform:translateZ(0) scale(2.4); border-radius:50%; opacity:0; }
+.boot-sphere-fresnel-deep {
+  position:absolute; inset:0; border-radius:50%;
+  opacity:0;
+  box-shadow:
+    inset 0 0 0 2.5px rgba(255,255,255,.52),
+    inset -2.6vmin 0 6vmin rgba(255,90,110,.17),
+    inset  2.6vmin 0 6vmin rgba(90,160,255,.22),
+    inset 0 0 9vmin rgba(255,255,255,.15),
+    inset 0 -2.4vmin 7vmin rgba(0,10,25,.30);
+  mix-blend-mode:screen;
+  pointer-events:none;
+  will-change:opacity;
 }
 
-/* Individual droplets flying out toward widget positions */
-.boot-droplet {
-  position:fixed; z-index:401; left:0; top:0;
-  width:14px; height:14px; border-radius:50%;
-  background:radial-gradient(circle at 32% 28%, rgba(255,255,255,.98), rgba(255,255,255,.5) 45%, rgba(179,216,168,.35) 75%, transparent 100%);
-  box-shadow:0 0 10px rgba(255,255,255,.7), 0 0 2px rgba(61,141,122,.4);
+.boot-sphere-highlight-wrap {
+  position:absolute; inset:0;
+  will-change:transform;
+}
+.boot-sphere-highlight {
+  position:absolute; width:34%; height:22%; left:20%; top:16%;
+  border-radius:50%;
+  background:radial-gradient(closest-side,
+    rgba(255,255,255,.78),
+    rgba(255,255,255,.20) 55%,
+    transparent 80%);
+  filter:blur(1.5vmin);
+  mix-blend-mode:screen;
+  opacity:.85;
+  animation:bootHighlightPulse 4.8s ease-in-out infinite;
+}
+@keyframes bootHighlightPulse {
+  0%,100% { opacity:.68; }
+  50%     { opacity:.96; }
+}
+
+.boot-sphere-highlight-2 {
+  position:absolute; width:16%; height:10%; left:58%; top:58%;
+  border-radius:50%;
+  background:radial-gradient(closest-side,
+    rgba(180,220,255,.45),
+    transparent 75%);
+  filter:blur(2vmin);
+  mix-blend-mode:screen;
+  opacity:.5;
+  animation:bootHighlight2Pulse 6.2s ease-in-out 1.2s infinite;
+}
+@keyframes bootHighlight2Pulse {
+  0%,100% { opacity:.35; }
+  50%     { opacity:.62; }
+}
+
+.boot-sphere-thinfilm {
+  position:absolute; inset:-1px; border-radius:50%;
+  box-shadow:
+    0 0 0 0.5px rgba(255,80,60,.04),
+    0 0 0 1.0px rgba(80,140,255,.03),
+    0 0 0 1.5px rgba(60,200,120,.02);
+  mix-blend-mode:screen;
+  opacity:.7;
+  pointer-events:none;
+}
+
+.boot-sphere-glow {
+  position:absolute; inset:-32%; border-radius:50%;
+  background:radial-gradient(circle,
+    rgba(190,225,255,.24) 0%,
+    rgba(190,220,255,.08) 45%,
+    transparent 72%);
+  opacity:.12;
+  pointer-events:none;
+  will-change:opacity;
+}
+
+.boot-sphere-haze {
+  position:absolute; inset:0; border-radius:50%;
+  background:radial-gradient(circle at 50% 55%,
+    rgba(200,230,255,.07) 0%,
+    transparent 65%);
+  pointer-events:none;
+}
+
+.boot-sphere-ca {
+  position:absolute; inset:-2px; border-radius:50%;
+  box-shadow:
+    0 0 0 1px rgba(255,40,30,.05),
+    0 0 0 2px rgba(40,120,255,.04);
+  mix-blend-mode:screen;
+  opacity:0;
+  pointer-events:none;
+  will-change:opacity;
+}
+
+.boot-expand-ring {
+  position:absolute; left:50%; top:50%;
+  width:14vmin; height:14vmin;
+  transform:translate3d(-50%,-50%,0) scale(1);
+  border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.35);
+  opacity:0;
   pointer-events:none;
   will-change:transform, opacity;
 }
+.boot-screen.phase-expand .boot-expand-ring {
+  animation:bootExpandRing 2.8s cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes bootExpandRing {
+  0%   { transform:translate3d(-50%,-50%,0) scale(.8); opacity:.8; }
+  60%  { opacity:.25; }
+  100% { transform:translate3d(-50%,-50%,0) scale(6); opacity:0; }
+}
+
+.boot-expand-ring-2 {
+  position:absolute; left:50%; top:50%;
+  width:14vmin; height:14vmin;
+  transform:translate3d(-50%,-50%,0) scale(1);
+  border-radius:50%;
+  border:1px solid rgba(200,230,255,.22);
+  opacity:0;
+  pointer-events:none;
+  will-change:transform, opacity;
+}
+.boot-screen.phase-expand .boot-expand-ring-2 {
+  animation:bootExpandRing 3.2s cubic-bezier(.22,1,.36,1) .25s forwards;
+}
+
+.boot-bloom {
+  position:absolute; left:50%; top:50%;
+  width:20vmin; height:20vmin;
+  transform:translate3d(-50%,-50%,0);
+  border-radius:50%;
+  background:radial-gradient(circle,
+    rgba(255,255,255,.18) 0%,
+    rgba(200,230,255,.07) 35%,
+    transparent 65%);
+  filter:blur(8px);
+  opacity:0;
+  pointer-events:none;
+  mix-blend-mode:screen;
+  will-change:opacity;
+}
+.boot-screen.phase-expand .boot-bloom {
+  animation:bootBloomPulse 1.6s ease-out forwards;
+}
+@keyframes bootBloomPulse {
+  0%   { opacity:0; }
+  25%  { opacity:.7; }
+  100% { opacity:0; }
+}
+
+.boot-dof {
+  position:absolute; inset:0;
+  background:radial-gradient(ellipse 50% 50% at 50% 50%,
+    transparent 30%,
+    rgba(0,0,0,.04) 100%);
+  pointer-events:none;
+}
+
+.boot-parallax-plate {
+  position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 40% at 35% 30%,
+    rgba(255,255,255,.04) 0%,
+    transparent 70%);
+  pointer-events:none;
+  will-change:transform;
+}
 
 @media (prefers-reduced-motion:reduce) {
-  .boot-stage, .boot-sphere::before, .boot-sphere::after, .boot-ring, .boot-particle, .boot-rays span { animation:none !important; }
-  .boot-screen { transition-duration:.25s; }
+  .boot-stage, .boot-sphere, .boot-sphere-inner,
+  .boot-sphere-refraction, .boot-sphere-refraction-wrap,
+  .boot-sphere-caustic, .boot-sphere-caustic-b,
+  .boot-sphere-fresnel, .boot-sphere-fresnel-deep,
+  .boot-sphere-highlight, .boot-sphere-highlight-wrap,
+  .boot-sphere-highlight-2, .boot-sphere-thinfilm,
+  .boot-sphere-glow, .boot-sphere-haze, .boot-sphere-ca,
+  .boot-expand-ring, .boot-expand-ring-2, .boot-bloom,
+  .boot-drop-body, .boot-drop-specular, .boot-drop-meniscus,
+  .boot-drop-shadow, .boot-drop-refraction,
+  .boot-ambient-glow, .boot-dof, .boot-parallax-plate,
+  .boot-ring, .boot-particle, .boot-rays span, .boot-veil {
+    animation:none !important;
+  }
+  .boot-screen { transition-duration:.2s; }
 }
+
+/* ============================================================
+   ANDROID GLASS FALLBACK
+   ============================================================ */
+html.is-android .em-panel,
+html.is-android .donut-tooltip,
+html.is-android .conn-pill,
+html.is-android .glass,
+html.is-android .card-head .tag,
+html.is-android .scope-badge,
+html.is-android .btn,
+html.is-android .slider,
+html.is-android .field input[type=text],
+html.is-android .toast,
+html.is-android .tabbar {
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+html.is-android .glass       { background:linear-gradient(172deg,rgba(255,255,255,.92) 0%,rgba(255,255,255,.86) 35%,rgba(255,255,255,.82) 65%,rgba(255,255,255,.86) 85%,rgba(255,255,255,.90) 100%); }
+html.is-android .tabbar      { background:linear-gradient(172deg,rgba(255,255,255,.97) 0%,rgba(255,255,255,.93) 100%); }
+html.is-android .conn-pill   { background:rgba(20,24,22,.94); }
+html.is-android .toast       { background:rgba(16,20,18,.96); }
+html.is-android .scope-badge { background:rgba(8,8,10,.72); }
+html.is-android .donut-tooltip { background:rgba(16,20,18,.94); }
+html.is-android .em-panel    { background:rgba(10,4,4,.94); }
+html.is-android .card-head .tag,
+html.is-android .field input[type=text] { background:rgba(255,255,255,.94); }
+
+html.is-android .glass.idle-sheen::after,
+html.is-android .tabbar::after { animation:none !important; opacity:.30 !important; }
+html.is-android .glass-sweep  { display:none !important; }
+
+.scope { isolation:isolate; contain:layout paint style; transform:translateZ(0); }
 </style>
 </head>
 <body class="booting">
 
-<!-- ============================================================
-     BOOT SEQUENCE — visionOS-style liquid glass startup
-     ============================================================ -->
 <div class="boot-screen" id="bootScreen">
   <div class="boot-veil"></div>
-  <div class="boot-rays">
+  <div class="boot-particles" id="bootParticles"></div>
+  <div class="boot-logo"     id="bootLogo"></div>
+  <div class="boot-droplet"  id="bootDroplet"></div>
+  <div class="boot-ambient-glow" id="bootAmbientGlow"></div>
+  <div class="boot-rays" aria-hidden="true">
     <span></span><span></span><span></span><span></span><span></span><span></span>
   </div>
-  <div class="boot-particles" id="bootParticles"></div>
+  <div class="boot-dof"></div>
+  <div class="boot-parallax-plate" id="bootParallaxPlate"></div>
+  <div class="boot-drop-shadow"    id="bootDropShadow"></div>
+  <div class="boot-drop-body"      id="bootDropBody"></div>
+  <div class="boot-drop-meniscus"  id="bootDropMeniscus"></div>
+  <div class="boot-drop-specular"  id="bootDropSpecular"></div>
+  <div class="boot-drop-refraction"id="bootDropRefraction"></div>
   <div class="boot-stage" id="bootStage">
-    <div class="boot-ring"></div>
     <div class="boot-sphere" id="bootSphere">
-      <div class="boot-logo" id="bootLogo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s7 7.5 7 12a7 7 0 0 1-14 0c0-4.5 7-12 7-12z"/></svg>
+      <div class="boot-sphere-glow"></div>
+      <div class="boot-sphere-inner">
+        <div class="boot-sphere-refraction-wrap" id="bootRefractionWrap">
+          <span class="boot-sphere-refraction"></span>
+        </div>
+        <span class="boot-sphere-caustic"   id="bootCaustic"></span>
+        <span class="boot-sphere-caustic-b"></span>
+        <div class="boot-sphere-highlight-wrap" id="bootHighlightWrap">
+          <span class="boot-sphere-highlight"></span>
+          <span class="boot-sphere-highlight-2"></span>
+        </div>
+        <div class="boot-sphere-haze"></div>
       </div>
+      <div class="boot-sphere-fresnel"></div>
+      <div class="boot-sphere-fresnel-deep" id="bootFresnelDeep"></div>
+      <div class="boot-sphere-thinfilm"></div>
+      <div class="boot-sphere-ca" id="bootSphereCA"></div>
     </div>
   </div>
+  <div class="boot-expand-ring"   id="bootExpandRing"></div>
+  <div class="boot-expand-ring-2" id="bootExpandRing2"></div>
+  <div class="boot-bloom" id="bootBloom"></div>
 </div>
 
 <!-- SVG DEFS -->
@@ -1788,48 +2076,38 @@ body.booting .conn-pill.revealed {
   <div class="bokeh" style="left:60%;top:30%;width:50px;height:50px;--bo:.35;--bbo:.08;--bblur:4px;--bop:.10;--bd:16s;--bdelay:-11s;--bx1:6px;--by1:-8px;--bx2:-8px;--by2:10px;--bx3:4px;--by3:-4px;"></div>
 </div>
 
-<!-- ============================================================
-     EMERGENCY OVERLAY
-     ============================================================ -->
+<!-- EMERGENCY OVERLAY -->
 <div class="emergency-overlay" id="emergencyOverlay" role="alertdialog" aria-modal="true" aria-label="Emergency Alert">
   <div class="em-tint"></div>
   <div class="em-border"></div>
   <div class="em-flash-l"></div>
   <div class="em-flash-r"></div>
-
-  <!-- Radar -->
   <div class="em-radar"></div>
-
-  <!-- Expanding rings -->
   <div class="em-rings" id="emRings">
     <div class="em-ring"></div>
     <div class="em-ring"></div>
     <div class="em-ring"></div>
   </div>
-
-  <!-- Alert panel -->
   <div class="em-panel">
-    <div class="em-icon-wrap" id="emIcon">⚠️</div>
-    <div class="em-alarm-text">⬥ Emergency Alert ⬥</div>
+    <div class="em-icon-wrap" id="emIcon">⚠</div>
+    <div class="em-alarm-text">Hazard Alert</div>
     <div class="em-hazard" id="emHazard">Fire Detected</div>
     <div class="em-meta">
-      <span>⏱ <strong id="emTime">—</strong></span>
-      <span>📊 <strong id="emConf">—</strong> confidence</span>
+      <span>Time: <strong id="emTime">—</strong></span>
+      <span>Confidence: <strong id="emConf">—</strong></span>
     </div>
     <div class="em-message" id="emMessage">High-confidence hazard detected. Please follow emergency protocols and evacuate if necessary.</div>
-    <button class="em-dismiss" onclick="dismissEmergency()">
-      ✕ Dismiss Alert
-    </button>
+    <button class="em-dismiss" onclick="dismissEmergency()">Acknowledge &amp; Dismiss</button>
     <div class="em-timer" id="emTimer">Auto-dismissing in <span id="emCountdown">10</span>s</div>
   </div>
 </div>
 
-<!-- Touch ripple element -->
+<!-- Touch ripple -->
 <div class="touch-ripple" id="touchRipple"></div>
 
 <div class="layout">
 
-  <!-- LEFT SIDE PANEL — Analytics -->
+  <!-- LEFT SIDE PANEL -->
   <aside class="side" id="sideLeftPanel">
     <div class="glass">
       <div class="glass-edge"></div><div class="glass-ca"></div><div class="glass-sweep"></div>
@@ -1844,14 +2122,12 @@ body.booting .conn-pill.revealed {
       </div>
     </div>
 
-    <!-- Analytics Card -->
     <div class="glass analytics-card" id="analyticsCard">
       <div class="glass-edge"></div><div class="glass-ca"></div><div class="glass-sweep"></div>
       <div class="card-head">
         <h2 style="font-size:15px;">Analytics</h2>
         <div class="tag" id="analyticsTag">Live</div>
       </div>
-
       <div class="donut-wrap" id="donutWrap">
         <div class="donut-ring"></div>
         <div class="donut-tooltip" id="donutTooltip">
@@ -1877,7 +2153,6 @@ body.booting .conn-pill.revealed {
           <span>No detections yet</span>
         </div>
       </div>
-
       <div class="an-legend" id="analyticsLegend">
         <div class="an-leg-row" data-type="fire" id="legFire">
           <div class="an-dot" style="background:#ff3b30;box-shadow:0 0 5px rgba(255,59,48,.40);"></div>
@@ -1904,7 +2179,6 @@ body.booting .conn-pill.revealed {
           <div class="an-leg-pct" id="anPctLandslide">—</div>
         </div>
       </div>
-
       <div class="an-meta">
         <div class="an-meta-row" id="anMostDetected" style="display:none;">
           <div class="an-meta-label">Most detected</div>
@@ -1940,8 +2214,7 @@ body.booting .conn-pill.revealed {
           <div class="tag" id="liveFeedTag">CAM 01</div>
         </div>
         <div class="scope" id="mainScope">
-          <img ="http://192.168.1.187/stream" alt="Live feed" width="640" height="480">
-          <!-- Offline state (added): shown automatically when the stream img fails to load -->
+          <img src="" alt="Live feed" width="640" height="480">
           <div class="scope-offline" aria-hidden="true">
             <div class="scope-offline-vignette"></div>
             <div class="scope-offline-grain"></div>
@@ -2011,8 +2284,7 @@ body.booting .conn-pill.revealed {
           <div class="tag">CAM 01</div>
         </div>
         <div class="scope" id="cameraScope" style="aspect-ratio:4/3;">
-          <img src="http://192.168.1.187/stream" width="640" height="480">
-          <!-- Offline state (added): shown automatically when the stream img fails to load -->
+          <img src="" alt="Camera feed" width="640" height="480">
           <div class="scope-offline" aria-hidden="true">
             <div class="scope-offline-vignette"></div>
             <div class="scope-offline-grain"></div>
@@ -2163,7 +2435,7 @@ body.booting .conn-pill.revealed {
   <span id="toastText"></span>
 </div>
 
-<!-- Tab bar -->
+<!-- Tab bar — always visible, always centred, only opacity changes during boot -->
 <div class="tabbar" id="tabbar">
   <div class="tabbar-depth"></div>
   <div class="tab-indicator" id="tabIndicator"></div>
@@ -2212,11 +2484,8 @@ function createSiren() {
     masterGain.gain.linearRampToValueAtTime(0.28, sirenCtx.currentTime + 0.4);
     masterGain.connect(sirenCtx.destination);
     sirenNodes.push(masterGain);
-
     const now = sirenCtx.currentTime;
-    const CYCLE = 0.9;
-    const TOTAL = 10;
-
+    const CYCLE = 0.9, TOTAL = 10;
     for (let i = 0; i < TOTAL / CYCLE; i++) {
       const t = now + i * CYCLE;
       const osc1 = sirenCtx.createOscillator();
@@ -2224,19 +2493,13 @@ function createSiren() {
       osc1.frequency.setValueAtTime(660, t);
       osc1.frequency.linearRampToValueAtTime(880, t + CYCLE * 0.5);
       osc1.frequency.linearRampToValueAtTime(660, t + CYCLE);
-
       const g1 = sirenCtx.createGain();
       g1.gain.setValueAtTime(0.18, t);
-
       const filter = sirenCtx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.value = 800;
-      filter.Q.value = 1.5;
-
+      filter.type = 'bandpass'; filter.frequency.value = 800; filter.Q.value = 1.5;
       osc1.connect(filter).connect(g1).connect(masterGain);
       osc1.start(t); osc1.stop(t + CYCLE);
       sirenNodes.push(osc1, g1, filter);
-
       const osc2 = sirenCtx.createOscillator();
       osc2.type = 'square';
       osc2.frequency.setValueAtTime(440, t);
@@ -2247,21 +2510,14 @@ function createSiren() {
       osc2.start(t); osc2.stop(t + CYCLE);
       sirenNodes.push(osc2, g2);
     }
-
-    // Fade out last 1.5s
     masterGain.gain.linearRampToValueAtTime(0.28, now + TOTAL - 1.5);
     masterGain.gain.linearRampToValueAtTime(0.001, now + TOTAL);
-
     setTimeout(() => stopSiren(), TOTAL * 1000);
   } catch(e) { console.log('Audio error:', e); }
 }
 
 function stopSiren() {
-  if (sirenCtx) {
-    try { sirenCtx.close(); } catch(e) {}
-    sirenCtx = null;
-    sirenNodes = [];
-  }
+  if (sirenCtx) { try { sirenCtx.close(); } catch(e) {} sirenCtx = null; sirenNodes = []; }
 }
 
 /* ============================================================
@@ -2274,31 +2530,16 @@ let emergencyCountdown = null;
 function triggerEmergency(evt) {
   if (emergencyActive) return;
   emergencyActive = true;
-
-  // Screen shake
   document.body.classList.add('shaking');
   setTimeout(() => document.body.classList.remove('shaking'), 600);
-
-  // Body pulse
   document.body.classList.add('emergency');
-
-  // Glass emergency tints
   document.querySelectorAll('.glass').forEach(g => g.classList.add('emergency-tint'));
-
-  // Camera emergency glow
   document.querySelectorAll('.scope').forEach(s => s.classList.add('emergency-cam'));
-
-  // Connection badge
   const pill = document.getElementById('connPill');
   pill.classList.add('emergency');
   document.getElementById('connText').textContent = 'Emergency';
-
-  // Tag in detection status
   const tag = document.getElementById('lastUpdateTag');
-  tag.classList.add('emergency-tag');
-  tag.textContent = '⚠ ALARM';
-
-  // Fill emergency panel
+  tag.classList.add('emergency-tag'); tag.textContent = '⚠ ALARM';
   const icons = { fire:'🔥', smoke:'💨', flood:'💧', landslide:'⛰️' };
   document.getElementById('emIcon').textContent = icons[evt.type] || '⚠️';
   document.getElementById('emHazard').textContent = (evt.type[0].toUpperCase() + evt.type.slice(1)) + ' Detected';
@@ -2311,31 +2552,12 @@ function triggerEmergency(evt) {
     landslide: 'Landslide risk detected. Evacuate steep slopes and follow emergency protocols.'
   };
   document.getElementById('emMessage').textContent = messages[evt.type] || 'High-confidence hazard detected. Follow emergency protocols.';
-
-  // Show overlay
   document.getElementById('emergencyOverlay').classList.add('active');
-
-  // Siren
   createSiren();
-
-  // Browser notification
   if (Notification && Notification.permission === 'granted') {
-    try {
-      new Notification('⚠️ ' + evt.type.toUpperCase() + ' DETECTED', {
-        body: evt.confidence + '% confidence · ' + new Date(evt.timestamp).toLocaleTimeString(),
-        icon: '', tag: 'sentry-emergency', requireInteraction: true
-      });
-    } catch(e) {}
-  } else if (Notification && Notification.permission !== 'denied') {
-    Notification.requestPermission();
-  }
-
-  // Mobile vibration
-  if (navigator.vibrate) {
-    try { navigator.vibrate([220, 100, 220, 100, 400]); } catch(e) {}
-  }
-
-  // Countdown auto-dismiss (10s)
+    try { new Notification('⚠️ ' + evt.type.toUpperCase() + ' DETECTED', { body: evt.confidence + '% confidence · ' + new Date(evt.timestamp).toLocaleTimeString(), tag: 'sentry-emergency', requireInteraction: true }); } catch(e) {}
+  } else if (Notification && Notification.permission !== 'denied') { Notification.requestPermission(); }
+  if (navigator.vibrate) { try { navigator.vibrate([220, 100, 220, 100, 400]); } catch(e) {} }
   let secs = 10;
   document.getElementById('emCountdown').textContent = secs;
   emergencyCountdown = setInterval(() => {
@@ -2348,24 +2570,16 @@ function triggerEmergency(evt) {
 
 function dismissEmergency() {
   if (!emergencyActive) return;
-  clearInterval(emergencyCountdown);
-  stopSiren();
-
-  const overlay = document.getElementById('emergencyOverlay');
-  overlay.classList.remove('active');
-
+  clearInterval(emergencyCountdown); stopSiren();
+  document.getElementById('emergencyOverlay').classList.remove('active');
   document.body.classList.remove('emergency');
   document.querySelectorAll('.glass').forEach(g => g.classList.remove('emergency-tint'));
   document.querySelectorAll('.scope').forEach(s => s.classList.remove('emergency-cam'));
-
   const pill = document.getElementById('connPill');
   pill.classList.remove('emergency');
-  // Restore connection state
   setConnState(EVENTS_URL && pill.classList.contains('online'));
-
   const tag = document.getElementById('lastUpdateTag');
   tag.classList.remove('emergency-tag');
-
   emergencyActive = false;
 }
 
@@ -2381,27 +2595,23 @@ function triggerTestEmergency() {
 if (!hasHover && !prefersReducedMotion && window.DeviceOrientationEvent) {
   let tiltPermissionAsked = false;
   const requestTilt = () => {
-    if (tiltPermissionAsked) return;
-    tiltPermissionAsked = true;
+    if (tiltPermissionAsked) return; tiltPermissionAsked = true;
     if (typeof DeviceOrientationEvent.requestPermission === 'function') {
       DeviceOrientationEvent.requestPermission().then(s => { if (s === 'granted') listenTilt(); }).catch(()=>{});
     } else { listenTilt(); }
   };
   document.addEventListener('touchstart', requestTilt, { once: true });
-
   function listenTilt() {
     let lB = 0, lG = 0;
     window.addEventListener('deviceorientation', e => {
       const b = Math.max(-20, Math.min(20, (e.beta || 0) - 20));
       const g = Math.max(-20, Math.min(20, e.gamma || 0));
-      lB = lB * .85 + b * .15;
-      lG = lG * .85 + g * .15;
+      lB = lB * .85 + b * .15; lG = lG * .85 + g * .15;
       document.querySelectorAll('.glass').forEach(card => {
         card.style.transform = `perspective(900px) rotateX(${-lB*.06}deg) rotateY(${lG*.06}deg)`;
         card.style.setProperty('--mx', (50 + lG * 1.8) + '%');
         card.style.setProperty('--my', (50 + lB * 1.2) + '%');
       });
-      // Simulated parallax depth on content
       document.querySelectorAll('.chip').forEach(c => {
         c.style.transform = `translate(${lG * 0.3}px, ${lB * 0.15}px)`;
       });
@@ -2409,15 +2619,11 @@ if (!hasHover && !prefersReducedMotion && window.DeviceOrientationEvent) {
   }
 }
 
-/* Touch ripple for mobile */
 document.addEventListener('touchstart', e => {
   const r = document.getElementById('touchRipple');
   const touch = e.touches[0];
-  r.style.left = touch.clientX + 'px';
-  r.style.top = touch.clientY + 'px';
-  r.classList.remove('active');
-  void r.offsetWidth;
-  r.classList.add('active');
+  r.style.left = touch.clientX + 'px'; r.style.top = touch.clientY + 'px';
+  r.classList.remove('active'); void r.offsetWidth; r.classList.add('active');
 }, { passive: true });
 
 /* ============================================================
@@ -2425,25 +2631,19 @@ document.addEventListener('touchstart', e => {
    ============================================================ */
 if (hasHover && !prefersReducedMotion) {
   document.querySelectorAll('.glass').forEach(card => {
-    let mx = 50, my = 10;
-    let txT = 0, tyT = 0, tx = 0, ty = 0;
-    let raf = null;
+    let mx = 50, my = 10, txT = 0, tyT = 0, tx = 0, ty = 0, raf = null;
     const lerp = (a, b, t) => a + (b - a) * t;
-
     card.addEventListener('mousemove', e => {
       const r = card.getBoundingClientRect();
-      mx = (e.clientX - r.left) / r.width * 100;
-      my = (e.clientY - r.top) / r.height * 100;
+      mx = (e.clientX - r.left) / r.width * 100; my = (e.clientY - r.top) / r.height * 100;
       txT = ((e.clientX - r.left) / r.width - 0.5) * 2.8;
       tyT = ((e.clientY - r.top) / r.height - 0.5) * 2.8;
-      card.style.setProperty('--mx', mx + '%');
-      card.style.setProperty('--my', my + '%');
+      card.style.setProperty('--mx', mx + '%'); card.style.setProperty('--my', my + '%');
       if (!raf) {
         const animate = () => {
           tx = lerp(tx, txT, 0.12); ty = lerp(ty, tyT, 0.12);
           card.style.transform = `perspective(900px) rotateX(${-ty}deg) rotateY(${tx}deg) translateY(-2px)`;
-          if (Math.abs(tx - txT) > .01 || Math.abs(ty - tyT) > .01) raf = requestAnimationFrame(animate);
-          else raf = null;
+          if (Math.abs(tx - txT) > .01 || Math.abs(ty - tyT) > .01) raf = requestAnimationFrame(animate); else raf = null;
         };
         raf = requestAnimationFrame(animate);
       }
@@ -2458,15 +2658,13 @@ if (hasHover && !prefersReducedMotion) {
         else { card.style.transform = ''; raf = null; }
       };
       raf = requestAnimationFrame(snap);
-      card.style.setProperty('--mx', '50%');
-      card.style.setProperty('--my', '10%');
+      card.style.setProperty('--mx', '50%'); card.style.setProperty('--my', '10%');
     });
   });
 } else {
   document.querySelectorAll('.glass').forEach(card => card.classList.add('idle-sheen'));
 }
 
-/* Tabbar cursor specular */
 const tabbar = document.getElementById('tabbar');
 if (hasHover && tabbar) {
   tabbar.addEventListener('mousemove', e => {
@@ -2525,13 +2723,12 @@ else window.addEventListener('load', initIndicator);
 window.addEventListener('resize', () => placeIndicatorInstant(document.querySelector('.tab.active')));
 
 /* ============================================================
-   SWITCH ANIMATIONS — enhanced liquid + spring
+   SWITCH ANIMATIONS
    ============================================================ */
 document.querySelectorAll('.switch input').forEach(inp => {
   const slider = inp.nextElementSibling;
   const ripple = slider.querySelector('.slider-ripple');
   const sw = inp.closest('.switch');
-
   const press = (e) => {
     slider.classList.add('pressing');
     if (ripple && e) {
@@ -2544,7 +2741,6 @@ document.querySelectorAll('.switch input').forEach(inp => {
     slider.classList.remove('pressing');
     if (ripple) { ripple.classList.remove('rippling'); void ripple.offsetWidth; ripple.classList.add('rippling'); setTimeout(() => ripple.classList.remove('rippling'), 450); }
   };
-
   inp.addEventListener('pointerdown', press);
   inp.addEventListener('pointerup', release);
   inp.addEventListener('pointerleave', () => slider.classList.remove('pressing'));
@@ -2576,18 +2772,15 @@ function beep(critical) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = critical ? 3400 : 2600;
+    filter.type = 'lowpass'; filter.frequency.value = critical ? 3400 : 2600;
     filter.connect(ctx.destination);
     function tone(freq, start, dur, peak) {
-      const osc = ctx.createOscillator();
-      osc.type = 'triangle'; osc.frequency.value = freq;
+      const osc = ctx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = freq;
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.0001, ctx.currentTime + start);
       g.gain.exponentialRampToValueAtTime(peak, ctx.currentTime + start + 0.015);
       g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
-      osc.connect(g).connect(filter);
-      osc.start(ctx.currentTime + start); osc.stop(ctx.currentTime + start + dur + 0.05);
+      osc.connect(g).connect(filter); osc.start(ctx.currentTime + start); osc.stop(ctx.currentTime + start + dur + 0.05);
     }
     if (critical) { tone(987.77, 0, .15, .24); tone(987.77, .13, .15, .24); tone(1318.5, .26, .26, .26); }
     else          { tone(1046.5, 0, .22, .16); tone(1567.98, .15, .30, .18); }
@@ -2599,8 +2792,7 @@ function beep(critical) {
    ============================================================ */
 function sweepCard(card) {
   if (prefersReducedMotion) return;
-  card.classList.remove('refreshing', 'sweeping');
-  void card.offsetWidth;
+  card.classList.remove('refreshing', 'sweeping'); void card.offsetWidth;
   card.classList.add('refreshing', 'sweeping');
   setTimeout(() => { card.classList.remove('refreshing'); card.classList.remove('sweeping'); }, 800);
 }
@@ -2620,7 +2812,6 @@ function animateScopeShimmer(scopeEl) {
   setTimeout(() => scopeEl.classList.remove('shimmering'), 700);
 }
 
-/* Animated counter helper */
 function animateCount(el, from, to, duration) {
   if (prefersReducedMotion) { el.textContent = to; return; }
   const start = performance.now();
@@ -2628,8 +2819,7 @@ function animateCount(el, from, to, duration) {
     const t = Math.min((now - start) / duration, 1);
     const ease = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2;
     el.textContent = Math.round(from + (to - from) * ease);
-    if (t < 1) requestAnimationFrame(frame);
-    else el.textContent = to;
+    if (t < 1) requestAnimationFrame(frame); else el.textContent = to;
   }
   requestAnimationFrame(frame);
 }
@@ -2641,8 +2831,7 @@ const DONUT_R = 52, DONUT_CX = 70, DONUT_CY = 70, DONUT_CIRC = 2 * Math.PI * DON
 const SEG_COLORS = { fire:'#ff3b30', smoke:'#9a9a9e', flood:'#A3D1C6', landslide:'#ff9f0a' };
 const SEG_ORDER = ['fire','smoke','flood','landslide'];
 const SEG_ICONS = { fire:'🔥', smoke:'💨', flood:'💧', landslide:'⛰️' };
-let lastTotal = 0;
-let donutRafId = null;
+let lastTotal = 0, donutRafId = null;
 
 function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
 function easeOutElastic(t) {
@@ -2654,7 +2843,6 @@ function buildSegments(counts, total, progress) {
   const segsEl = document.getElementById('donutSegments');
   if (!segsEl) return;
   if (total === 0) { segsEl.innerHTML = ''; return; }
-
   let frag = '', offsetAccum = 0;
   SEG_ORDER.forEach(type => {
     const count = counts[type] || 0; if (!count) return;
@@ -2662,15 +2850,9 @@ function buildSegments(counts, total, progress) {
     const segLen = fraction * DONUT_CIRC * progress - GAP;
     if (segLen <= 0) return;
     const color = SEG_COLORS[type];
-    frag += `<circle class="donut-seg ${type}" cx="${DONUT_CX}" cy="${DONUT_CY}" r="${DONUT_R}"
-      stroke="${color}" stroke-dasharray="${segLen} ${DONUT_CIRC-segLen}"
-      stroke-dashoffset="${-offsetAccum}" style="filter:drop-shadow(0 0 4px ${color}55);"/>`;
+    frag += `<circle class="donut-seg ${type}" cx="${DONUT_CX}" cy="${DONUT_CY}" r="${DONUT_R}" stroke="${color}" stroke-dasharray="${segLen} ${DONUT_CIRC-segLen}" stroke-dashoffset="${-offsetAccum}" style="filter:drop-shadow(0 0 4px ${color}55);"/>`;
     const hl = Math.min(5, segLen * 0.12);
-    if (hl > 0.5) {
-      frag += `<circle cx="${DONUT_CX}" cy="${DONUT_CY}" r="${DONUT_R}" fill="none"
-        stroke="rgba(255,255,255,0.55)" stroke-width="18" stroke-linecap="round"
-        stroke-dasharray="${hl} ${DONUT_CIRC-hl}" stroke-dashoffset="${-(offsetAccum+segLen-hl)}" pointer-events="none"/>`;
-    }
+    if (hl > 0.5) frag += `<circle cx="${DONUT_CX}" cy="${DONUT_CY}" r="${DONUT_R}" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="18" stroke-linecap="round" stroke-dasharray="${hl} ${DONUT_CIRC-hl}" stroke-dashoffset="${-(offsetAccum+segLen-hl)}" pointer-events="none"/>`;
     offsetAccum += fraction * DONUT_CIRC * progress;
   });
   segsEl.innerHTML = frag;
@@ -2678,8 +2860,7 @@ function buildSegments(counts, total, progress) {
 
 function animateFill(counts, total, fromProg, toProg) {
   if (donutRafId) cancelAnimationFrame(donutRafId);
-  let start = null;
-  const DUR = 1400;
+  let start = null; const DUR = 1400;
   function frame(ts) {
     if (!start) start = ts;
     const t = Math.min((ts - start) / DUR, 1);
@@ -2706,7 +2887,6 @@ function updateAnalytics() {
   const isEmpty = total === 0;
   document.getElementById('donutEmpty').classList.toggle('show', isEmpty);
   document.getElementById('donutCenter').classList.toggle('hide', isEmpty);
-
   if (isEmpty) {
     document.getElementById('donutSegments').innerHTML = '';
     document.getElementById('donutTotal').textContent = '0';
@@ -2719,14 +2899,11 @@ function updateAnalytics() {
     });
     return;
   }
-
   const isNew = total !== lastTotal;
   const fromP = lastTotal === 0 ? 0 : 1;
   lastTotal = total;
-
   if (isNew && !prefersReducedMotion) animateFill(counts, total, fromP, 1);
   else { buildSegments(counts, total, 1); document.getElementById('donutTotal').textContent = total; }
-
   SEG_ORDER.forEach(type => {
     const cap = type[0].toUpperCase()+type.slice(1);
     const cnt = counts[type], pct = total > 0 ? Math.round(cnt/total*100) : 0;
@@ -2735,7 +2912,6 @@ function updateAnalytics() {
     if (cEl) cEl.textContent = cnt;
     if (pEl) pEl.textContent = cnt > 0 ? pct+'%' : '—';
   });
-
   const mostType = SEG_ORDER.reduce((a,b) => counts[a] >= counts[b] ? a : b);
   if (counts[mostType] > 0) {
     document.getElementById('anMostDetected').style.display = 'flex';
@@ -2752,13 +2928,11 @@ function updateAnalytics() {
   }
 }
 
-/* Donut tooltip */
 function setupDonutHover() {
   const svg = document.getElementById('analyticsDonut');
   const tooltip = document.getElementById('donutTooltip');
   const wrap = document.getElementById('donutWrap');
   if (!svg || !tooltip) return;
-
   svg.addEventListener('mousemove', e => {
     const { counts, total } = computeAnalyticsCounts();
     if (!total) return;
@@ -2814,9 +2988,9 @@ let firstPoll = true;
 renderHistory();
 
 function iconFor(type) {
-  if (type==='fire')      return '🔥';
-  if (type==='smoke')     return '💨';
-  if (type==='flood')     return '💧';
+  if (type==='fire') return '🔥';
+  if (type==='smoke') return '💨';
+  if (type==='flood') return '💧';
   if (type==='landslide') return '⛰️';
   return '•';
 }
@@ -2825,7 +2999,6 @@ function renderHistory(newEvtType) {
   const list = document.getElementById('historyList');
   const tag = document.getElementById('historyCount');
   tag.textContent = events.length + ' event' + (events.length===1?'':'s');
-
   if (events.length === 0) {
     list.innerHTML = '<div class="empty"><div class="big">📭</div>Events sent from Flask will appear here automatically.</div>';
   } else {
@@ -2841,8 +3014,6 @@ function renderHistory(newEvtType) {
         </div>
       </div>`).join('');
   }
-
-  // Side panel event count with animation
   const sideCount = document.getElementById('sideEventCount');
   if (sideCount) {
     const prev = parseInt(sideCount.textContent) || 0;
@@ -2851,22 +3022,13 @@ function renderHistory(newEvtType) {
       sideCount.classList.remove('side-count-pulse'); void sideCount.offsetWidth; sideCount.classList.add('side-count-pulse');
     } else { sideCount.textContent = events.length; }
   }
-
   const sideList = document.getElementById('sideHistoryList');
   if (sideList) {
     sideList.innerHTML = events.length === 0
       ? '<div class="mini-empty">Nothing yet — events will show up here.</div>'
-      : events.slice(0,5).map(e => `
-          <div class="mini-hitem">
-            <div class="ico">${iconFor(e.type)}</div>
-            <div class="kind">${e.type}</div>
-            <div class="conf">${e.confidence}%</div>
-          </div>`).join('');
+      : events.slice(0,5).map(e => `<div class="mini-hitem"><div class="ico">${iconFor(e.type)}</div><div class="kind">${e.type}</div><div class="conf">${e.confidence}%</div></div>`).join('');
   }
-
   updateAnalytics();
-
-  // Animate side cards on update
   if (newEvtType) {
     sweepCard(document.getElementById('sideQuickGlance'));
     setTimeout(() => sweepCard(document.getElementById('sideRecentCard')), 80);
@@ -2876,22 +3038,14 @@ function renderHistory(newEvtType) {
 function updateStatusChip(type, confidence, timestamp) {
   const readingEl = document.getElementById(type+'Reading');
   if (!readingEl) return;
-
-  const prev = readingEl.textContent;
   readingEl.textContent = confidence+'%';
   readingEl.classList.toggle('hot', confidence >= 60);
-  // Counting animation
-  if (!prefersReducedMotion) {
-    readingEl.classList.remove('counting'); void readingEl.offsetWidth; readingEl.classList.add('counting');
-  }
-
-  // Chip pulse
+  if (!prefersReducedMotion) { readingEl.classList.remove('counting'); void readingEl.offsetWidth; readingEl.classList.add('counting'); }
   const chip = document.getElementById('chip-'+type);
   if (chip && !prefersReducedMotion) {
     chip.classList.remove('pulsing'); void chip.offsetWidth; chip.classList.add('pulsing');
     setTimeout(() => chip.classList.remove('pulsing'), 700);
   }
-
   const label = 'Updated '+new Date(timestamp).toLocaleTimeString();
   document.getElementById('lastUpdateTag').textContent = label;
   const sU = document.getElementById('sideLastUpdate');
@@ -2902,86 +3056,49 @@ function recordEvent(evt) {
   const recorded = document.getElementById('toggleRecord').checked;
   events.unshift({ ...evt, recorded });
   events = events.slice(0, 100);
-
-  // Trigger animations
   sweepCard(document.getElementById('card-detection'));
   animateScopeShimmer(document.getElementById('mainScope'));
-
   renderHistory(evt.type);
   updateStatusChip(evt.type, evt.confidence, evt.timestamp);
-
-  const notify   = document.getElementById('toggleNotify').checked;
+  const notify = document.getElementById('toggleNotify').checked;
   const critical = evt.confidence >= 60;
   if (notify) showToast(`${evt.type[0].toUpperCase()+evt.type.slice(1)} detected · ${evt.confidence}%`, critical);
   beep(critical);
-
-  // Emergency mode trigger (≥ 70% confidence)
-  if (evt.confidence >= 70 && document.getElementById('toggleEmergency').checked) {
-    triggerEmergency(evt);
-  }
+  if (evt.confidence >= 70 && document.getElementById('toggleEmergency').checked) triggerEmergency(evt);
 }
 
 /* ============================================================
    FLASK POLLING
    ============================================================ */
-let EVENTS_URL;
-let pollTimer = null;
-let wasOnline = false;
+let EVENTS_URL, pollTimer = null, wasOnline = false;
 
 function setConnState(online) {
   if (emergencyActive) return;
-
   const pill = document.getElementById('connPill');
   pill.classList.toggle('online', online);
   pill.classList.toggle('offline', !online);
-
-  document.getElementById('connText').textContent =
-    online ? 'Connected' : 'Offline';
-
+  document.getElementById('connText').textContent = online ? 'Connected' : 'Offline';
   document.getElementById('pollStatusDesc').textContent = online
     ? `Connected · polling ${EVENTS_URL}`
     : `Waiting to reach ${EVENTS_URL || '(no endpoint set)'}`;
-
   const sideConn = document.getElementById('sideConnText');
   if (sideConn) {
     sideConn.textContent = online ? 'Connected' : 'Offline';
     sideConn.classList.toggle('online', online);
     sideConn.classList.toggle('offline', !online);
   }
-
-  // First successful connection
-if (online && !wasOnline) {
-
-  // Connected while boot animation is still playing.
-  // Save it and let finishBoot() play the animation.
-  if (!bootFinished) {
-    flaskConnected = true;
-    wasOnline = online;
-    return;
+  if (online && !wasOnline) {
+    if (!bootFinished) { flaskConnected = true; wasOnline = online; return; }
+    if (syncAnimationPlayed) { wasOnline = online; return; }
+    syncAnimationPlayed = true;
+    animateConnectBadge();
+    document.querySelectorAll('.glass').forEach((g, i) => { setTimeout(() => sweepCard(g), i * 60); });
+    const scope = document.getElementById('mainScope');
+    if (scope) animateScopeShimmer(scope);
   }
-
-  // Prevent replaying the connection animation.
-  if (syncAnimationPlayed) {
-    wasOnline = online;
-    return;
-  }
-
-  syncAnimationPlayed = true;
-
-  animateConnectBadge();
-
-  document.querySelectorAll('.glass').forEach((g, i) => {
-    setTimeout(() => sweepCard(g), i * 60);
-  });
-
-  const scope = document.getElementById('mainScope');
-  if (scope) {
-    animateScopeShimmer(scope);
-  }
+  wasOnline = online;
 }
 
-wasOnline = online;
-}
 async function pollEvents() {
   if (!EVENTS_URL) return;
   try {
@@ -2989,51 +3106,23 @@ async function pollEvents() {
     if (!res.ok) throw new Error('bad status');
     const data = await res.json();
     setConnState(true);
-     // First poll: synchronize with existing events but DON'T trigger alarms
-if (firstPoll) {
-
-  if (Array.isArray(data)) {
-
-    // Mark all existing events as already seen
-    data.forEach(e => {
-      if (e && e.id !== undefined) {
-        seenIds.add(e.id);
+    if (firstPoll) {
+      if (Array.isArray(data)) {
+        data.forEach(e => { if (e && e.id !== undefined) seenIds.add(e.id); });
+        events = data.filter(e => e && e.id !== undefined).sort((a, b) => b.id - a.id).map(e => ({
+          id: e.id, type: (e.type || "unknown").toLowerCase(),
+          confidence: Math.round(e.confidence ?? 0),
+          timestamp: e.timestamp || new Date().toISOString(), recorded: true
+        }));
+        renderHistory();
+        if (events.length > 0) { const latest = events[0]; updateStatusChip(latest.type, latest.confidence, latest.timestamp); }
       }
-    });
-
-    // Populate history without notifications
-    events = data
-      .filter(e => e && e.id !== undefined)
-      .sort((a, b) => b.id - a.id)
-      .map(e => ({
-        id: e.id,
-        type: (e.type || "unknown").toLowerCase(),
-        confidence: Math.round(e.confidence ?? 0),
-        timestamp: e.timestamp || new Date().toISOString(),
-        recorded: true
-      }));
-
-    renderHistory();
-
-    // Update the status cards from the newest event
-    if (events.length > 0) {
-      const latest = events[0];
-      updateStatusChip(latest.type, latest.confidence, latest.timestamp);
+      firstPoll = false; return;
     }
-
-  }
-
-  firstPoll = false;
-  return; // Don't process existing events as new
-}
     if (Array.isArray(data)) {
-      data
-        .filter(e => e && e.id !== undefined && !seenIds.has(e.id))
-        .sort((a,b) => a.id - b.id)
-        .forEach(e => {
-          seenIds.add(e.id);
-          recordEvent({ id:e.id, type:(e.type||'unknown').toLowerCase(), confidence:Math.round(e.confidence??0), timestamp:e.timestamp||new Date().toISOString() });
-        });
+      data.filter(e => e && e.id !== undefined && !seenIds.has(e.id))
+          .sort((a,b) => a.id - b.id)
+          .forEach(e => { seenIds.add(e.id); recordEvent({ id:e.id, type:(e.type||'unknown').toLowerCase(), confidence:Math.round(e.confidence??0), timestamp:e.timestamp||new Date().toISOString() }); });
     }
   } catch(err) { setConnState(false); }
 }
@@ -3057,59 +3146,60 @@ async function sendTestEvent() {
   } catch(err) { showToast('Failed to save event', true); }
 }
 
-/* ============ CAMERA ============ */
 function snapshot() { showToast('Snapshot captured'); animateScopeShimmer(document.getElementById('mainScope')); }
 function reconnectCamera() {
   showToast('Reconnecting camera…');
   setTimeout(() => { showToast('Camera reconnected'); animateScopeShimmer(document.getElementById('cameraScope')); }, 1200);
 }
 
-/* ---- Camera offline state (added) ------------------------------------
-   Hooks into each stream <img>'s load/error events so a broken/unavailable
-   MJPEG feed automatically crossfades into the built-in visionOS-style
-   offline animation defined in CSS (.scope-offline), then automatically
-   fades back to the live stream once the image loads again. Does not
-   touch Flask polling, event polling, analytics, or emergency mode. ---- */
+/* Camera offline state */
 const CAMERA_OFFLINE_RETRY_MS = 4000;
+const CAMERA_DECODE_GRACE_MS = 2500;
+
 function initCameraOfflineState(scopeEl) {
   if (!scopeEl) return;
   const img = scopeEl.querySelector('img');
   if (!img) return;
-  const originalSrc = img.getAttribute('src');
-  let retryTimer = null;
-
+  let retryTimer = null, decodeTimer = null;
+  function getCurrentSrc() { return img.getAttribute('src') || ''; }
+  function goOffline() { if (!scopeEl.classList.contains('is-offline')) scopeEl.classList.add('is-offline'); }
+  function goOnline() {
+    scopeEl.classList.remove('is-offline');
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+    if (decodeTimer) { clearTimeout(decodeTimer); decodeTimer = null; }
+  }
   function scheduleRetry() {
     if (retryTimer) return;
+    const src = getCurrentSrc(); if (!src) return;
     retryTimer = setTimeout(() => {
       retryTimer = null;
-      const sep = originalSrc.indexOf('?') === -1 ? '?' : '&';
-      img.src = originalSrc + sep + '_retry=' + Date.now();
+      const sep = src.indexOf('?') === -1 ? '?' : '&';
+      img.src = src + sep + '_retry=' + Date.now();
     }, CAMERA_OFFLINE_RETRY_MS);
   }
-
-  img.addEventListener('error', () => {
-    if (!scopeEl.classList.contains('is-offline')) scopeEl.classList.add('is-offline');
-    scheduleRetry();
-  });
+  img.addEventListener('error', () => { if (decodeTimer) { clearTimeout(decodeTimer); decodeTimer = null; } goOffline(); scheduleRetry(); });
   img.addEventListener('load', () => {
-    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-    scopeEl.classList.remove('is-offline');
+    if (decodeTimer) clearTimeout(decodeTimer);
+    decodeTimer = setTimeout(() => {
+      decodeTimer = null;
+      if (img.naturalWidth === 0) { goOffline(); scheduleRetry(); } else { goOnline(); }
+    }, CAMERA_DECODE_GRACE_MS);
   });
+  if (!getCurrentSrc()) goOffline();
 }
 initCameraOfflineState(document.getElementById('mainScope'));
 initCameraOfflineState(document.getElementById('cameraScope'));
 
-// Pause the (already GPU-cheap) offline animations while the tab isn't visible
 document.addEventListener('visibilitychange', () => {
   document.querySelectorAll('.scope-offline').forEach(el => el.classList.toggle('paused', document.hidden));
 });
 
-/* ============ PERSIST SETTINGS ============ */
+/* Settings persistence */
 function saveSettings() {
-  localStorage.setItem('notify',    toggleNotify.checked);
-  localStorage.setItem('sound',     toggleSound.checked);
-  localStorage.setItem('record',    toggleRecord.checked);
-  localStorage.setItem('endpoint',  endpointInput.value);
+  localStorage.setItem('notify', toggleNotify.checked);
+  localStorage.setItem('sound', toggleSound.checked);
+  localStorage.setItem('record', toggleRecord.checked);
+  localStorage.setItem('endpoint', endpointInput.value);
   localStorage.setItem('emergency', toggleEmergency.checked);
 }
 function loadSettings() {
@@ -3119,14 +3209,62 @@ function loadSettings() {
   if (localStorage.getItem('endpoint')  !== null) endpointInput.value    = localStorage.getItem('endpoint');
   if (localStorage.getItem('emergency') !== null) toggleEmergency.checked = localStorage.getItem('emergency') === 'true';
 }
-
-toggleNotify.addEventListener('change',    saveSettings);
-toggleSound.addEventListener('change',     saveSettings);
-toggleRecord.addEventListener('change',    saveSettings);
-endpointInput.addEventListener('change',   saveSettings);
+toggleNotify.addEventListener('change', saveSettings);
+toggleSound.addEventListener('change', saveSettings);
+toggleRecord.addEventListener('change', saveSettings);
+endpointInput.addEventListener('change', saveSettings);
 toggleEmergency.addEventListener('change', saveSettings);
-
 loadSettings();
+
+/* ============================================================
+   BOOT SOUND
+   ============================================================ */
+function playBootSound() {
+  if (prefersReducedMotion) return;
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const master = ctx.createGain();
+    master.gain.value = 0.0001;
+    master.connect(ctx.destination);
+    master.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.6);
+    const droneGain = ctx.createGain(); droneGain.gain.value = 0.18; droneGain.connect(master);
+    [55, 55.6, 110].forEach((freq, i) => {
+      const osc = ctx.createOscillator(); osc.type = i === 1 ? 'sine' : 'triangle'; osc.frequency.value = freq;
+      const g = ctx.createGain(); g.gain.value = i === 2 ? 0.35 : 0.6;
+      osc.connect(g); g.connect(droneGain); osc.start(); osc.stop(ctx.currentTime + 5.8);
+    });
+    const bufSize = ctx.sampleRate * 1.3;
+    [0.5, 0.68, 0.86, 1.04].forEach((startAt) => {
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+      const noise = ctx.createBufferSource(); noise.buffer = buf;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.8;
+      const t0 = ctx.currentTime + startAt;
+      bp.frequency.setValueAtTime(500, t0); bp.frequency.linearRampToValueAtTime(2600, t0 + 0.7); bp.frequency.linearRampToValueAtTime(700, t0 + 1.3);
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.0001, t0); noiseGain.gain.linearRampToValueAtTime(0.08, t0 + 0.35); noiseGain.gain.linearRampToValueAtTime(0.0001, t0 + 1.3);
+      noise.connect(bp); bp.connect(noiseGain); noiseGain.connect(master); noise.start(t0);
+    });
+    const chimeFreqs = [1318.5, 1760, 2217, 2637, 3136];
+    chimeFreqs.forEach((freq, i) => {
+      const t = ctx.currentTime + 0.55 + i * 0.32;
+      const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = freq;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.075, t + 0.04); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+      osc.connect(g); g.connect(master); osc.start(t); osc.stop(t + 1.2);
+    });
+    const swellT = ctx.currentTime + 2.1;
+    const bass = ctx.createOscillator(); bass.type = 'sine'; bass.frequency.value = 36;
+    const bassGain = ctx.createGain();
+    bassGain.gain.setValueAtTime(0.0001, swellT); bassGain.gain.linearRampToValueAtTime(0.6, swellT + 0.75); bassGain.gain.exponentialRampToValueAtTime(0.0001, swellT + 2.3);
+    bass.connect(bassGain); bassGain.connect(master); bass.start(swellT); bass.stop(swellT + 2.4);
+    master.gain.setValueAtTime(0.5, ctx.currentTime + 3.4); master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 5.6);
+    setTimeout(() => { try { ctx.close(); } catch (e) {} }, 6000);
+  } catch (e) {}
+}
 
 /* ============================================================
    BOOT SEQUENCE ORCHESTRATION
@@ -3136,13 +3274,11 @@ function spawnBootParticles() {
   if (!host) return;
   const n = prefersReducedMotion ? 0 : 14;
   for (let i = 0; i < n; i++) {
-    const p = document.createElement('div');
-    p.className = 'boot-particle';
+    const p = document.createElement('div'); p.className = 'boot-particle';
     const size = 2 + Math.random() * 3.5;
     const angle = Math.random() * Math.PI * 2;
     const dist = 70 + Math.random() * 120;
-    p.style.width = size + 'px';
-    p.style.height = size + 'px';
+    p.style.width = size + 'px'; p.style.height = size + 'px';
     p.style.left = `calc(50% + ${Math.cos(angle) * dist}px)`;
     p.style.top  = `calc(50% + ${Math.sin(angle) * dist}px)`;
     p.style.setProperty('--pd', (4.5 + Math.random() * 4) + 's');
@@ -3162,12 +3298,26 @@ function revealElement(el, delay) {
 }
 
 function runBootSequence() {
-  const boot   = document.getElementById('bootScreen');
-  const stage  = document.getElementById('bootStage');
-  const sphere = document.getElementById('bootSphere');
-  spawnBootParticles();
+  const boot          = document.getElementById('bootScreen');
+  const stage         = document.getElementById('bootStage');
+  const sphere        = document.getElementById('bootSphere');
+  const refractionWrap= document.getElementById('bootRefractionWrap');
+  const highlightWrap = document.getElementById('bootHighlightWrap');
+  const fresnelDeep   = document.getElementById('bootFresnelDeep');
+  const caustic       = document.getElementById('bootCaustic');
+  const glow          = sphere ? sphere.querySelector('.boot-sphere-glow') : null;
+  const sphereCA      = document.getElementById('bootSphereCA');
+  const dropBody      = document.getElementById('bootDropBody');
+  const dropMeniscus  = document.getElementById('bootDropMeniscus');
+  const dropSpecular  = document.getElementById('bootDropSpecular');
+  const dropShadow    = document.getElementById('bootDropShadow');
+  const dropRefraction= document.getElementById('bootDropRefraction');
+  const ambientGlow   = document.getElementById('bootAmbientGlow');
+  const parallaxPlate = document.getElementById('bootParallaxPlate');
 
-  // Reduced motion: skip the full show, reveal quickly and cleanly
+  spawnBootParticles();
+  playBootSound();
+
   if (prefersReducedMotion) {
     document.body.classList.remove('booting');
     document.querySelectorAll('.layout .glass, #tabbar, .conn-pill').forEach(el => el.classList.add('revealed'));
@@ -3177,108 +3327,105 @@ function runBootSequence() {
     return;
   }
 
-  // Logo materializes from inside the glass
-  requestAnimationFrame(() => setTimeout(() => stage.classList.add('boot-logo-in'), 260));
-  // Screen slowly clears as "initialization" proceeds
-  setTimeout(() => boot.classList.add('boot-clearing'), 500);
+  function easeInCubic(t)  { return t * t * t; }
+  function smoothStep(t) { return t * t * (3 - 2 * t); }
 
-  // Once init completes: sphere morphs into liquid and dissolves into droplets
+  setTimeout(() => { if (boot) boot.classList.add('phase-glow'); }, 80);
+
   setTimeout(() => {
-    stage.classList.add('boot-morph');
-    launchDroplets();
-  }, 1900);
+    if (boot) boot.classList.add('phase-drop');
+    setTimeout(() => { if (dropBody) dropBody.classList.add('oscillating'); }, 1500);
+  }, 1000);
+
+  setTimeout(() => {
+    if (dropBody) dropBody.classList.remove('oscillating');
+    if (boot)     boot.classList.add('phase-morph');
+    setTimeout(() => {
+      [dropBody, dropMeniscus, dropSpecular, dropShadow, dropRefraction].forEach(el => {
+        if (el) { el.style.transition = 'opacity .55s ease'; el.style.opacity = '0'; }
+      });
+      if (ambientGlow) { ambientGlow.style.transition = 'opacity .55s ease'; ambientGlow.style.opacity = '0'; }
+    }, 820);
+  }, 3050);
+
+  const PERSPECTIVE = 1400, Z_START = -1250, Z_END = 1260, APPROACH_DURATION = 4100;
+
+  function finishApproach() {
+    if (boot) boot.classList.add('phase-expand');
+    boot.classList.add('boot-filled');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      boot.classList.add('boot-out');
+      revealDashboard();
+      setTimeout(() => { boot.classList.add('boot-gone'); document.body.classList.remove('booting'); }, 2700);
+    }));
+  }
+
+  function stepApproach(startTime, now) {
+    if (startTime === null) startTime = now;
+    const t  = Math.min(1, (now - startTime) / APPROACH_DURATION);
+    const p  = easeInCubic(t);
+    const z  = Z_START + (Z_END - Z_START) * p;
+    if (sphere) sphere.style.transform = `translate3d(-50%, -50%, ${z.toFixed(1)}px)`;
+    if (refractionWrap) refractionWrap.style.transform = `rotate(${(p * 26).toFixed(2)}deg) translate(${(p * 6).toFixed(2)}%, ${(p * -4).toFixed(2)}%)`;
+    if (highlightWrap) highlightWrap.style.transform = `rotate(${(p * 68).toFixed(2)}deg)`;
+    if (fresnelDeep) fresnelDeep.style.opacity = p.toFixed(3);
+    if (caustic)     caustic.style.opacity      = (0.35 + p * 0.50).toFixed(3);
+    if (glow)        glow.style.opacity         = (0.12 + p * 0.56).toFixed(3);
+    if (sphereCA) {
+      const caStrength = (t < 0.5) ? smoothStep(t * 2) * 0.75 : (1 - smoothStep((t - 0.5) * 2)) * 0.75;
+      sphereCA.style.opacity = caStrength.toFixed(3);
+    }
+    if (parallaxPlate) parallaxPlate.style.transform = `translate(${(p * -2).toFixed(2)}%, ${(p * -1.5).toFixed(2)}%)`;
+    if (t < 1) requestAnimationFrame(n => stepApproach(startTime, n));
+    else finishApproach();
+  }
+
+  setTimeout(() => {
+    stage.classList.add('boot-grow');
+    requestAnimationFrame(n => stepApproach(null, n));
+  }, 3920);
 }
 
-function launchDroplets() {
-  const sphere = document.getElementById('bootSphere');
-  const rect = sphere.getBoundingClientRect();
-  const originX = rect.left + rect.width / 2;
-  const originY = rect.top + rect.height / 2;
-
-  // Widgets in reveal order: cards top-to-bottom through the layout
+function revealDashboard() {
   const targets = Array.from(document.querySelectorAll('.layout .glass'));
-  const tabbar = document.getElementById('tabbar');
+  const tb = document.getElementById('tabbar');
   const connPill = document.querySelector('.conn-pill');
-
-  let maxArrival = 0;
-
+  let maxDelay = 0;
   targets.forEach((el, i) => {
-    const delay = i * 70;
-    const tRect = el.getBoundingClientRect();
-    const targetX = tRect.left + tRect.width / 2;
-    const targetY = tRect.top + Math.min(tRect.height / 2, 60);
-    const duration = 620 + Math.random() * 260;
-    maxArrival = Math.max(maxArrival, delay + duration);
-
+    const delay = i * 45; maxDelay = Math.max(maxDelay, delay);
     setTimeout(() => {
-      const drop = document.createElement('div');
-      drop.className = 'boot-droplet';
-      document.body.appendChild(drop);
-      const anim = drop.animate([
-        { transform: `translate(${originX}px, ${originY}px) scale(1)`, opacity: 1 },
-        { transform: `translate(${(originX+targetX)/2 + (Math.random()*40-20)}px, ${(originY+targetY)/2 - 30}px) scale(1.15)`, opacity: 1, offset: .55 },
-        { transform: `translate(${targetX}px, ${targetY}px) scale(.3)`, opacity: 0 }
-      ], { duration, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'forwards' });
-
-      anim.onfinish = () => {
-        drop.remove();
-        el.classList.add('revealed');
+      el.classList.add('revealed');
+      setTimeout(() => {
         if (el.classList.contains('glass')) sweepCard(el);
         if (el.id === 'card-livefeed') { const s = document.getElementById('mainScope'); if (s) animateScopeShimmer(s); }
-      };
+      }, 260);
     }, delay);
   });
-
-  // Tab bar slides up while refracting the background
-  setTimeout(() => tabbar && tabbar.classList.add('revealed'), 120);
-  // Connection badge settles in and begins its gentle pulse
-  setTimeout(() => connPill && connPill.classList.add('revealed'), 200);
-
-  // Fade out the boot screen once droplets have landed
-  setTimeout(() => {
-    const boot = document.getElementById('bootScreen');
-    boot.classList.add('boot-out');
-    setTimeout(() => { boot.classList.add('boot-gone'); document.body.classList.remove('booting'); }, 750);
-  }, maxArrival + 120);
-
-  // Analytics animates in after the other widgets have appeared
-  setTimeout(finishBoot, maxArrival + 300);
+  /* tabbar: reveal with opacity only — no transform change.
+     The bar is already perfectly centred via CSS transform:translateX(-50%).
+     We just toggle pointer-events and fade it in. */
+  setTimeout(() => tb && tb.classList.add('revealed'), 40);
+  setTimeout(() => connPill && connPill.classList.add('revealed'), 90);
+  setTimeout(finishBoot, maxDelay + 2500);
 }
 
-let bootFinished = false;
-let flaskConnected = false;
-let syncAnimationPlayed = false;
+let bootFinished = false, flaskConnected = false, syncAnimationPlayed = false;
 
 function finishBoot() {
   if (bootFinished) return;
-
   bootFinished = true;
-
- 
-  // Update analytics immediately
   updateAnalytics();
-
-  // If Flask connected while the boot animation was playing,
-  // play the dashboard reveal now.
   if (flaskConnected && !syncAnimationPlayed) {
-
     syncAnimationPlayed = true;
-
     animateConnectBadge();
-
-    document.querySelectorAll('.glass').forEach((g, i) => {
-      setTimeout(() => sweepCard(g), i * 60);
-    });
-
+    document.querySelectorAll('.glass').forEach((g, i) => { setTimeout(() => sweepCard(g), i * 60); });
     const scope = document.getElementById('mainScope');
-    if (scope) {
-      animateScopeShimmer(scope);
-    }
+    if (scope) animateScopeShimmer(scope);
   }
 }
 
-applyEndpoint();   // Start trying to connect to Flask immediately
-runBootSequence(); // Play the boot animation
+applyEndpoint();
+runBootSequence();
 </script>
 </body>
 </html>
