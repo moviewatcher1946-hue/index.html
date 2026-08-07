@@ -1334,113 +1334,169 @@ body.shaking { animation: screenShake .4s ease; }
 }
 
 /* ============================================================
-   BOOT SEQUENCE — fullscreen liquid glass, crossfades into dashboard
+   BOOT SEQUENCE — Simple Liquid Glass
    ============================================================ */
+
 .boot-screen {
-  position:fixed; inset:0; z-index:400;
-  overflow:hidden;
-  background:#000;
-  transition:opacity .95s cubic-bezier(.22,1,.36,1);
+  position: fixed; inset: 0; z-index: 400;
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  transition: opacity 1.2s cubic-bezier(.22,1,.36,1);
 }
-.boot-screen.boot-out  { opacity:0; pointer-events:none; }
-.boot-screen.boot-gone { display:none; }
+.boot-screen.boot-out { opacity: 0; pointer-events: none; }
+.boot-screen.boot-gone { display: none; }
 
-.boot-ambient {
-  position:absolute; left:50%; top:50%;
-  width:90vmax; height:90vmax;
-  transform:translate(-50%,-50%) scale(.4);
-  border-radius:50%;
-  background:radial-gradient(circle, rgba(150,200,255,.16) 0%, rgba(120,170,255,.06) 40%, transparent 72%);
-  opacity:0;
-  transition:opacity 1.6s ease, transform 2.6s cubic-bezier(.22,1,.36,1);
-  pointer-events:none;
-}
-.boot-screen.phase-form .boot-ambient { opacity:1; transform:translate(-50%,-50%) scale(.7); }
-.boot-screen.phase-grow .boot-ambient { opacity:0; transform:translate(-50%,-50%) scale(1.4); }
-
-.boot-blob-wrap { position:absolute; inset:0; pointer-events:none; }
-
-.boot-blob, .boot-blob-r, .boot-blob-b {
-  position:absolute; left:50%; top:50%;
-  width:56vmax; height:56vmax;
-  transform:translate(-50%,-50%) scale(.001);
-  border-radius:50%;
-  opacity:0;
-  will-change:transform, border-radius, opacity;
+/* Grain */
+.boot-grain {
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  opacity: 0.10; pointer-events: none; mix-blend-mode: overlay;
 }
 
-.boot-blob {
-  filter:url(#liquid-distortion);
+/* Chromatic aberration wrapper */
+.boot-chromatic {
+  position: relative;
+  filter: drop-shadow(-2px 0 0.5px rgba(255, 40, 80, 0.20)) drop-shadow(2px 0 0.5px rgba(0, 230, 255, 0.20));
+  animation: bootChromaPulse 2.5s ease-in-out infinite;
+}
+@keyframes bootChromaPulse {
+  0%, 100% { filter: drop-shadow(-1.5px 0 0.5px rgba(255,40,80,0.15)) drop-shadow(1.5px 0 0.5px rgba(0,230,255,0.15)); }
+  50%      { filter: drop-shadow(-3px 0 1px rgba(255,40,80,0.28)) drop-shadow(3px 0 1px rgba(0,230,255,0.28)); }
+}
+
+/* Liquid Glass Circle */
+.boot-circle {
+  width: 160px; height: 160px; border-radius: 50%;
+  position: relative; display: flex; align-items: center; justify-content: center;
   background:
-    radial-gradient(circle at 32% 26%, rgba(255,255,255,.95), rgba(255,255,255,.14) 42%, rgba(255,255,255,.02) 66%),
-    linear-gradient(150deg, rgba(200,225,255,.30), rgba(140,190,255,.05));
-  box-shadow:0 0 10vmax rgba(160,210,255,.25), inset 0 0 8vmax rgba(255,255,255,.20);
-}
-.boot-blob-r, .boot-blob-b { filter:url(#liquid-distortion); mix-blend-mode:screen; }
-.boot-blob-r { background:radial-gradient(circle at 32% 26%, rgba(255,70,60,.9), transparent 55%); }
-.boot-blob-b { background:radial-gradient(circle at 32% 26%, rgba(70,140,255,.9), transparent 55%); }
-
-/* phase 1 — a droplet condenses out of the dark, with a small human hesitation */
-.boot-screen.phase-form .boot-blob {
-  animation:bootFormBody 950ms cubic-bezier(.34,1.24,.64,1) forwards,
-            bootBreathe 2600ms ease-in-out 950ms infinite;
-}
-.boot-screen.phase-form .boot-blob-r {
-  animation:bootFormGhost 950ms cubic-bezier(.34,1.24,.64,1) forwards,
-            bootChromaR 1500ms ease-in-out 950ms infinite;
-}
-.boot-screen.phase-form .boot-blob-b {
-  animation:bootFormGhost 950ms cubic-bezier(.34,1.24,.64,1) forwards,
-            bootChromaB 1500ms ease-in-out 950ms infinite;
-}
-@keyframes bootFormBody {
-  0%   { opacity:0; transform:translate(-50%,-50%) scale(.02); border-radius:50%; }
-  58%  { opacity:1; transform:translate(-50%,-50%) scale(.155); border-radius:46% 54% 60% 40% / 55% 45% 55% 45%; }
-  80%  { transform:translate(-50%,-50%) scale(.125); border-radius:50%; }
-  100% { opacity:1; transform:translate(-50%,-50%) scale(.14); border-radius:44% 56% 58% 42% / 50% 48% 52% 50%; }
-}
-@keyframes bootFormGhost {
-  0%   { opacity:0; transform:translate(-50%,-50%) scale(.02); }
-  58%  { opacity:.5; transform:translate(-50%,-50%) scale(.155); }
-  100% { opacity:.4; transform:translate(-50%,-50%) scale(.14); }
-}
-@keyframes bootBreathe {
-  0%,100% { border-radius:44% 56% 58% 42% / 50% 48% 52% 50%; }
-  50%     { border-radius:56% 44% 46% 54% / 44% 56% 44% 56%; }
-}
-@keyframes bootChromaR {
-  0%,100% { transform:translate(calc(-50% - 5px), calc(-50% - 2px)) scale(.14); }
-  50%     { transform:translate(calc(-50% + 5px), calc(-50% + 3px)) scale(.14); }
-}
-@keyframes bootChromaB {
-  0%,100% { transform:translate(calc(-50% + 5px), calc(-50% + 2px)) scale(.14); }
-  50%     { transform:translate(calc(-50% - 5px), calc(-50% - 3px)) scale(.14); }
+    radial-gradient(ellipse 85% 55% at 50% 5%, rgba(255,255,255,0.32) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 35% at 25% 85%, rgba(255,255,255,0.08) 0%, transparent 50%),
+    linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.03) 100%);
+  background-color: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border: 1.5px solid rgba(255, 255, 255, 0.24);
+  box-shadow:
+    inset 0 1.5px 2px rgba(255,255,255,0.35),
+    inset 0 -1px 1px rgba(255,255,255,0.05),
+    0 12px 40px rgba(0,0,0,0.30),
+    0 0 0 1px rgba(255,255,255,0.06);
+  overflow: hidden;
+  opacity: 0; transform: scale(0.6); filter: blur(12px);
+  animation: bootCircleIn 1.0s cubic-bezier(.22,1,.36,1) 0.3s forwards;
 }
 
-/* phase 2 — the droplet surges outward and fills the screen with glass,
-   a slight overshoot-and-settle at the end reads as physical, not mechanical */
-.boot-screen.phase-grow .boot-blob      { animation:bootGrowBody  1500ms cubic-bezier(.22,1,.36,1) forwards; }
-.boot-screen.phase-grow .boot-blob-r,
-.boot-screen.phase-grow .boot-blob-b    { animation:bootGrowGhost 1500ms cubic-bezier(.22,1,.36,1) forwards; }
-@keyframes bootGrowBody {
-  0%   { opacity:1; transform:translate(-50%,-50%) scale(.14);  border-radius:44% 56% 58% 42% / 50% 48% 52% 50%; }
-  40%  { transform:translate(-50%,-50%) scale(.66);  border-radius:48% 52% 45% 55% / 55% 50% 50% 45%; }
-  88%  { transform:translate(-50%,-50%) scale(3.3);  border-radius:48% 52% 50% 50% / 50% 50% 50% 50%; }
-  100% { opacity:1; transform:translate(-50%,-50%) scale(3.05); border-radius:50%; }
+/* Edge refraction */
+.boot-circle::before {
+  content: ''; position: absolute; inset: -2px; border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.14) 12%,
+    rgba(255,255,255,0) 28%,
+    rgba(255,255,255,0.08) 48%,
+    rgba(255,255,255,0) 65%,
+    rgba(255,255,255,0.18) 80%,
+    rgba(255,255,255,0) 100%
+  );
+  filter: blur(8px); opacity: 0.5;
+  animation: bootRotateRefraction 6s linear infinite;
+  pointer-events: none;
 }
-@keyframes bootGrowGhost {
-  0%   { opacity:.4; transform:translate(-50%,-50%) scale(.14); }
-  32%  { opacity:.46; }
-  70%  { opacity:.14; }
-  100% { opacity:0; transform:translate(-50%,-50%) scale(3.05); }
+@keyframes bootRotateRefraction {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-@media (prefers-reduced-motion:reduce) {
-  .boot-blob, .boot-blob-r, .boot-blob-b, .boot-ambient {
-    animation:none !important;
-    transition:none !important;
+/* Inner caustic highlight */
+.boot-circle::after {
+  content: ''; position: absolute; top: 8%; left: 14%; width: 38%; height: 20%;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.50) 0%, transparent 70%);
+  border-radius: 50%; filter: blur(4px); transform: rotate(-18deg); pointer-events: none;
+}
+
+/* CC Light Sweep */
+.boot-sweep {
+  position: absolute; inset: -50%;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255,255,255,0) 42%,
+    rgba(255,255,255,0.35) 48%,
+    rgba(255,255,255,0.55) 50%,
+    rgba(255,255,255,0.35) 52%,
+    rgba(255,255,255,0) 58%,
+    transparent 60%
+  );
+  transform: translateX(-100%) rotate(25deg);
+  animation: bootSweep 1.4s cubic-bezier(.4, 0, .2, 1) 1.4s forwards;
+  pointer-events: none; mix-blend-mode: overlay;
+}
+
+/* Secondary softer sweep */
+.boot-sweep-2 {
+  position: absolute; inset: -50%;
+  background: linear-gradient(
+    105deg,
+    transparent 45%,
+    rgba(200, 245, 230, 0) 47%,
+    rgba(200, 245, 230, 0.20) 49%,
+    rgba(200, 245, 230, 0.30) 50%,
+    rgba(200, 245, 230, 0.20) 51%,
+    rgba(200, 245, 230, 0) 53%,
+    transparent 55%
+  );
+  transform: translateX(-100%) rotate(25deg);
+  animation: bootSweep 1.6s cubic-bezier(.4, 0, .2, 1) 1.5s forwards;
+  pointer-events: none; mix-blend-mode: screen;
+}
+@keyframes bootSweep {
+  0%   { transform: translateX(-100%) rotate(25deg); }
+  100% { transform: translateX(100%) rotate(25deg); }
+}
+
+/* Shimmer */
+.boot-shimmer {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgba(255,255,255,0.03) 42%,
+    rgba(255,255,255,0.10) 50%,
+    rgba(255,255,255,0.03) 58%,
+    transparent 65%
+  );
+  transform: translateX(-120%) rotate(20deg);
+  animation: bootShimmerMove 3.0s ease-in-out 1.2s infinite;
+  pointer-events: none; mix-blend-mode: soft-light;
+}
+@keyframes ShimmerMove {
+  0%   { transform: translateX(-120%) rotate(20deg); }
+  100% { transform: translateX(120%) rotate(20deg); }
+}
+
+/* Fade out the circle */
+.boot-circle.boot-fade-out {
+  animation: bootCircleOut 1.0s cubic-bezier(.65, 0, .35, 1) 0s forwards;
+}
+@keyframes bootCircleOut {
+  0%   { opacity: 1; transform: scale(1); filter: blur(0px); }
+  100% { opacity: 0; transform: scale(0.85); filter: blur(8px); }
+}
+
+/* Circle entrance */
+@keyframes bootCircleIn {
+  0%   { opacity: 0; transform: scale(0.6); filter: blur(12px); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-circle, .boot-sweep, .boot-sweep-2, .boot-shimmer, .boot-chromatic {
+    animation: none !important;
   }
-  .boot-screen { transition-duration:.2s; }
+  .boot-circle { opacity: 1; transform: none; filter: none; }
+  .boot-screen { transition-duration: .2s; }
 }
 
 /* ============================================================
@@ -1476,29 +1532,28 @@ html.is-android .glass-sweep  { display:none !important; }
 
 .scope { isolation:isolate; contain:layout paint style; transform:translateZ(0); }
 </style>
+<base target="_blank">
 </head>
 <body class="booting">
 
 <div class="boot-screen" id="bootScreen">
-  <div class="boot-ambient"></div>
-  <div class="boot-blob-wrap">
-    <div class="boot-blob-r"></div>
-    <div class="boot-blob-b"></div>
-    <div class="boot-blob"></div>
+  <div class="boot-grain"></div>
+  <div class="boot-chromatic">
+    <div class="boot-circle" id="bootCircle">
+      <div class="boot-sweep"></div>
+      <div class="boot-sweep-2"></div>
+      <div class="boot-shimmer"></div>
+    </div>
   </div>
 </div>
+
+
+
 
 <!-- SVG DEFS -->
 <svg style="position:absolute;width:0;height:0;overflow:hidden;" aria-hidden="true">
   <defs>
-    <filter id="liquid-distortion" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
-      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.010" numOctaves="3" seed="12" result="noise1"/>
-      <feTurbulence type="fractalNoise" baseFrequency="0.020 0.028" numOctaves="2" seed="34" result="noise2"/>
-      <feMerge result="combinedNoise"><feMergeNode in="noise1"/><feMergeNode in="noise2"/></feMerge>
-      <feGaussianBlur in="combinedNoise" stdDeviation="2.5" result="softNoise"/>
-      <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="18" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
-      <feColorMatrix in="displaced" type="saturate" values="1.08"/>
-    </filter>
+
     <radialGradient id="holeGrad" cx="40%" cy="35%" r="65%">
       <stop offset="0%" stop-color="rgba(255,255,255,0.55)"/>
       <stop offset="50%" stop-color="rgba(255,255,255,0.25)"/>
@@ -2666,39 +2721,48 @@ endpointInput.addEventListener('change', saveSettings);
 toggleEmergency.addEventListener('change', saveSettings);
 loadSettings();
 
+
 /* ============================================================
    BOOT SEQUENCE ORCHESTRATION
    ============================================================ */
+let bootFinished = false;
+let flaskConnected = false;
+let syncAnimationPlayed = false;
+
 function runBootSequence() {
   const boot = document.getElementById('bootScreen');
+  const circle = document.getElementById('bootCircle');
 
   if (prefersReducedMotion) {
     document.body.classList.remove('booting');
-    document.querySelectorAll('.layout .glass, #tabbar, .conn-pill').forEach(el => el.classList.add('revealed'));
     if (boot) {
-      boot.classList.add('boot-out');
-      setTimeout(() => boot.classList.add('boot-gone'), 100);
+      boot.style.transition = 'opacity .3s ease';
+      boot.style.opacity = '0';
+      boot.style.pointerEvents = 'none';
+      setTimeout(() => { boot.remove(); document.body.classList.remove('booting'); }, 300);
     }
     finishBoot();
     return;
   }
 
-  if (!boot) { revealDashboard(); return; }
-
-  /* condense */
-  setTimeout(() => boot.classList.add('phase-form'), 60);
-  /* surge outward to fill the screen */
-  setTimeout(() => boot.classList.add('phase-grow'), 950);
-  /* dashboard starts waking up underneath, just before the glass clears */
-  setTimeout(() => revealDashboard(), 2300);
-  /* crossfade the glass away */
+  /* After sweep completes (~3.0s), fade the circle */
   setTimeout(() => {
-    boot.classList.add('boot-out');
-    setTimeout(() => {
-      boot.classList.add('boot-gone');
-      document.body.classList.remove('booting');
-    }, 950);
-  }, 2500);
+    if (circle) circle.classList.add('boot-fade-out');
+  }, 3000);
+
+  /* Fade the whole boot screen away */
+  setTimeout(() => {
+    if (boot) {
+      boot.classList.add('boot-out');
+      setTimeout(() => {
+        boot.classList.add('boot-gone');
+        document.body.classList.remove('booting');
+      }, 1200);
+    }
+  }, 3800);
+
+  /* Reveal dashboard underneath */
+  setTimeout(() => revealDashboard(), 3400);
 }
 
 function revealDashboard() {
@@ -2716,15 +2780,10 @@ function revealDashboard() {
       }, 260);
     }, delay);
   });
-  /* tabbar: reveal with opacity only — no transform change.
-     The bar is already perfectly centred via CSS transform:translateX(-50%).
-     We just toggle pointer-events and fade it in. */
   setTimeout(() => tb && tb.classList.add('revealed'), 40);
   setTimeout(() => connPill && connPill.classList.add('revealed'), 90);
-  setTimeout(finishBoot, maxDelay + 2500);
+  setTimeout(finishBoot, maxDelay + 800);
 }
-
-let bootFinished = false, flaskConnected = false, syncAnimationPlayed = false;
 
 function finishBoot() {
   if (bootFinished) return;
