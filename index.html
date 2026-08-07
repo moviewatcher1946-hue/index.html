@@ -1448,256 +1448,526 @@ body.shaking { animation: screenShake .4s ease; }
 }
 
 /* ============================================================
-   BOOT SEQUENCE — cinematic liquid-glass sphere boot
-   A single ultra-realistic glass sphere floats in darkness,
-   catches sweeping volumetric light, drifts toward the camera
-   while growing, and expands until it becomes a full-screen
-   lens that melts into transparency to reveal the dashboard.
+   BOOT SEQUENCE — Cinematic Liquid-Glass Droplet Animation
+   Phase 1: Darkness → ambient glow materialises
+   Phase 2: Water droplet forms with surface tension & oscillation
+   Phase 3: Droplet morphs into circular liquid-glass lens
+   Phase 4: Lens expands like surface tension stretching outward
+   Phase 5: Dashboard reveals through dissolving glass layer
    ============================================================ */
+
+/* -- Customisation tokens -- */
+:root {
+  --boot-droplet-color-a: rgba(180,220,255,.72);
+  --boot-droplet-color-b: rgba(140,200,255,.55);
+  --boot-lens-refract: rgba(255,255,255,.38);
+  --boot-caustic-a: rgba(120,190,255,.14);
+  --boot-caustic-b: rgba(200,240,255,.18);
+  --boot-glow-color: rgba(160,210,255,.20);
+  --boot-ray-color: rgba(220,238,255,.55);
+  --boot-phase1-dur: 1200ms;   /* darkness → glow */
+  --boot-phase2-dur: 1600ms;   /* droplet materialise */
+  --boot-phase3-dur: 800ms;    /* droplet → lens morph */
+  --boot-phase4-dur: 2800ms;   /* lens expansion */
+  --boot-phase5-dur: 2600ms;   /* glass dissolve / dashboard reveal */
+}
+
+/* -- Body & dashboard hide state -- */
 body.booting { overflow:hidden; height:100vh; }
 
-/* Dashboard starts fully hidden beneath the boot screen, then
-   crossfades in as one coordinated reveal once the glass lens
-   has filled the frame and begins dissolving. */
 body.booting .layout .glass,
 body.booting #tabbar,
 body.booting .conn-pill {
   opacity:0;
-  filter:blur(14px);
-  transform:translateY(18px) scale(.96);
+  filter:blur(16px);
+  transform:translateY(22px) scale(.95);
   pointer-events:none;
-  transition:opacity 2.4s cubic-bezier(.22,1,.36,1),
-             filter 2.4s cubic-bezier(.22,1,.36,1),
-             transform 1.1s cubic-bezier(.34,1.56,.64,1);
+  transition:
+    opacity   2.5s cubic-bezier(.22,1,.36,1),
+    filter    2.5s cubic-bezier(.22,1,.36,1),
+    transform 1.2s cubic-bezier(.34,1.56,.64,1);
 }
 body.booting .layout .glass.revealed,
 body.booting #tabbar.revealed,
 body.booting .conn-pill.revealed {
   opacity:1; filter:blur(0); transform:translateY(0) scale(1); pointer-events:auto;
 }
-#tabbar.revealed { transition:opacity 2.4s cubic-bezier(.22,1,.36,1), filter 2.4s cubic-bezier(.22,1,.36,1), transform 1.1s cubic-bezier(.16,1,.3,1); }
+#tabbar.revealed {
+  transition:
+    opacity   2.5s cubic-bezier(.22,1,.36,1),
+    filter    2.5s cubic-bezier(.22,1,.36,1),
+    transform 1.1s cubic-bezier(.16,1,.3,1);
+}
 
+/* -- Boot screen container -- */
 .boot-screen {
   position:fixed; inset:0; z-index:400;
   overflow:hidden;
-  background:#000000;
-  filter:blur(0px);
-  transition:opacity 2.6s cubic-bezier(.22,1,.36,1), filter 2.6s cubic-bezier(.22,1,.36,1);
+  background:#000;
+  transition:opacity 2.8s cubic-bezier(.22,1,.36,1), filter 2.8s cubic-bezier(.22,1,.36,1);
 }
-/* Instantly snaps to full blur the moment the lens fills the frame —
-   no transition on this step, so the very next class (.boot-out) is
-   what animates the blur back down to 0 while fading to transparent,
-   i.e. the glass melting into the dashboard beneath it. */
-.boot-screen.boot-filled:not(.boot-out) { transition:none; filter:blur(20px); }
-.boot-screen.boot-out { opacity:0; filter:blur(0px); pointer-events:none; }
+.boot-screen.boot-filled:not(.boot-out) { transition:none; filter:blur(22px); }
+.boot-screen.boot-out  { opacity:0; filter:blur(0); pointer-events:none; }
 .boot-screen.boot-gone { display:none; }
 
-/* Element kept for structural/JS-hook continuity only — no visible fog */
-.boot-veil { position:absolute; inset:0; opacity:0; }
+/* Structural/JS-hook stubs — kept invisible */
+.boot-veil     { position:absolute; inset:0; opacity:0; pointer-events:none; }
+.boot-particles{ position:absolute; inset:0; pointer-events:none; }
+.boot-particle { position:absolute; opacity:0 !important; }
+.boot-logo     { position:absolute; width:0; height:0; opacity:0; }
+.boot-droplet  { position:fixed; opacity:0 !important; pointer-events:none; }
+.boot-ring     { display:none; }
+@keyframes bootParticleFloat { 0%,100%{ opacity:0; } }
 
-/* Soft volumetric light beams sweep across the darkness at a fixed
-   ~40deg angle. The first four make one dramatic pass while the
-   sphere is small and approaching; two slower, softer beams then
-   keep drifting gently for the rest of the sequence so light stays
-   present in the scene until the whole boot screen dissolves. */
-.boot-rays { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
-.boot-rays span {
-  position:absolute; top:-70%; left:-70%; width:22vmax; height:190vmax;
-  background:linear-gradient(180deg, transparent, rgba(220,238,255,.4) 40%, rgba(255,255,255,.8) 50%, rgba(220,238,255,.4) 60%, transparent);
-  filter:blur(22px);
+/* ============================================================
+   PHASE 1 — AMBIENT GLOW
+   A soft radial pulse rises from the centre before anything appears,
+   giving the eye a focal anchor in the darkness.
+   ============================================================ */
+.boot-ambient-glow {
+  position:absolute; left:50%; top:50%;
+  width:60vmax; height:60vmax;
+  transform:translate3d(-50%,-50%,0) scale(0);
+  border-radius:50%;
+  background:radial-gradient(circle,
+    rgba(160,210,255,.14) 0%,
+    rgba(140,190,255,.07) 38%,
+    transparent 70%);
+  pointer-events:none;
   opacity:0;
-  mix-blend-mode:screen;
-  transform:rotate(40deg) translate(-140vmax,-140vmax);
   will-change:transform, opacity;
 }
-.boot-stage.boot-grow .boot-rays span:nth-child(-n+4) {
-  animation:bootBeamSweep 1.7s cubic-bezier(.3,.05,.2,1) forwards;
+.boot-screen.phase-glow .boot-ambient-glow {
+  animation:bootAmbientRise 1.4s cubic-bezier(.22,1,.36,1) forwards;
 }
-.boot-rays span:nth-child(1){ animation-delay:0s; }
-.boot-rays span:nth-child(2){ animation-delay:.2s; }
-.boot-rays span:nth-child(3){ animation-delay:.4s; }
-.boot-rays span:nth-child(4){ animation-delay:.6s; }
+@keyframes bootAmbientRise {
+  0%   { opacity:0; transform:translate3d(-50%,-50%,0) scale(0.1); }
+  40%  { opacity:1; }
+  100% { opacity:.65; transform:translate3d(-50%,-50%,0) scale(1); }
+}
+
+/* ============================================================
+   PHASE 2 — VOLUMETRIC GOD RAYS
+   Soft light beams sweep through scene while droplet forms.
+   ============================================================ */
+.boot-rays { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+.boot-rays span {
+  position:absolute; top:-70%; left:-70%;
+  width:18vmax; height:200vmax;
+  background:linear-gradient(180deg,
+    transparent 0%,
+    rgba(220,238,255,.30) 35%,
+    rgba(255,255,255,.70) 50%,
+    rgba(220,238,255,.30) 65%,
+    transparent 100%);
+  filter:blur(20px);
+  opacity:0;
+  mix-blend-mode:screen;
+  transform:rotate(38deg) translate(-150vmax,-150vmax);
+  will-change:transform, opacity;
+}
+/* Primary sweep rays — fire in sequence */
+.boot-stage.boot-grow .boot-rays span:nth-child(1) { animation:bootBeamSweep 1.8s cubic-bezier(.28,.05,.18,1) 0.0s forwards; }
+.boot-stage.boot-grow .boot-rays span:nth-child(2) { animation:bootBeamSweep 1.8s cubic-bezier(.28,.05,.18,1) 0.2s forwards; }
+.boot-stage.boot-grow .boot-rays span:nth-child(3) { animation:bootBeamSweep 1.8s cubic-bezier(.28,.05,.18,1) 0.4s forwards; }
+.boot-stage.boot-grow .boot-rays span:nth-child(4) { animation:bootBeamSweep 1.8s cubic-bezier(.28,.05,.18,1) 0.6s forwards; }
 @keyframes bootBeamSweep {
-  0%   { opacity:0;   transform:rotate(40deg) translate(-140vmax,-140vmax); }
-  14%  { opacity:.5; }
-  82%  { opacity:.35; }
-  100% { opacity:0;   transform:rotate(40deg) translate(140vmax,140vmax); }
+  0%   { opacity:0;   transform:rotate(38deg) translate(-150vmax,-150vmax); }
+  12%  { opacity:.55; }
+  80%  { opacity:.30; }
+  100% { opacity:0;   transform:rotate(38deg) translate(150vmax,150vmax); }
 }
-/* Two slow, soft ambient beams — low-opacity, wide, drifting back and
-   forth — keep the volumetric light alive through the growth and
-   fill stages. They live inside .boot-screen so they fade away
-   naturally with it during the final dissolve. */
-.boot-rays span:nth-child(5), .boot-rays span:nth-child(6) {
-  width:34vmax; filter:blur(30px);
-}
-.boot-stage.boot-grow .boot-rays span:nth-child(5) {
-  animation:bootBeamAmbient 7s ease-in-out 1.9s infinite;
-}
-.boot-stage.boot-grow .boot-rays span:nth-child(6) {
-  animation:bootBeamAmbient 8.5s ease-in-out 3.4s infinite;
-}
+/* Slow ambient beams — keep light alive during expansion */
+.boot-rays span:nth-child(5),
+.boot-rays span:nth-child(6) { width:38vmax; filter:blur(32px); }
+.boot-stage.boot-grow .boot-rays span:nth-child(5) { animation:bootBeamAmbient  7.5s ease-in-out 2.0s infinite; }
+.boot-stage.boot-grow .boot-rays span:nth-child(6) { animation:bootBeamAmbient  9.0s ease-in-out 3.6s infinite; }
 @keyframes bootBeamAmbient {
-  0%,100% { opacity:0;   transform:rotate(40deg) translate(-60vmax,-60vmax); }
-  50%     { opacity:.16; transform:rotate(40deg) translate(60vmax,60vmax); }
+  0%,100% { opacity:0;   transform:rotate(38deg) translate(-65vmax,-65vmax); }
+  50%     { opacity:.14; transform:rotate(38deg) translate(65vmax,65vmax); }
 }
 
-/* Element kept for structural/JS-hook continuity only — no visible particles,
-   shards, or geometric shapes are used to build the animation. */
-.boot-particles { position:absolute; inset:0; pointer-events:none; }
-.boot-particle { position:absolute; opacity:0 !important; }
-@keyframes bootParticleFloat { 0%,100% { opacity:0; } }
-
-/* Full-bleed stage the single glass sphere lives and grows within */
-/* Full-bleed 3D stage the sphere physically travels through. A real
-   CSS perspective is used (not a flat scale trick) so moving the
-   sphere along Z is an actual simulated camera dolly toward a
-   3D object — apparent size, thickness and magnification all grow
-   as an honest side-effect of shrinking distance, the way a real
-   lens approaching a camera would behave. */
+/* ============================================================
+   BOOT STAGE — flat container (no 3-D perspective needed)
+   ============================================================ */
 .boot-stage {
   position:absolute; inset:0;
-  display:block;
-  perspective:1400px;
-  perspective-origin:50% 50%;
 }
 
-/* Rotating glass ring loader — removed */
-.boot-ring { display:none; }
-
-/* ------------------------------------------------------------
-   THE SPHERE — one element, one shape, throughout the whole
-   sequence, never duplicated or swapped for another shape. It
-   starts almost stationary and small, far back in the 3D scene,
-   then physically travels toward the camera along the Z axis
-   (JS drives translate3d(..., z) every frame under the perspective
-   above — this is a real depth move, not a 2D scale()). Motion is
-   eased so it starts with almost no velocity and gathers momentum,
-   finishing fast, the way a real object being pulled toward a lens
-   would accelerate rather than move at a constant rate. */
-.boot-sphere {
-  position:absolute; left:50%; top:50%; width:16vmax; height:16vmax;
+/* ============================================================
+   PHASE 2 — WATER DROPLET
+   A single, physically accurate droplet materialises from nothing,
+   hangs suspended with subtle oscillation, then morphs into the lens.
+   The droplet uses canvas rendering via JS — the CSS here sets up
+   the container and provides the surface-tension shimmer layers.
+   ============================================================ */
+.boot-droplet-canvas {
+  position:absolute;
+  left:50%; top:50%;
+  transform:translate3d(-50%,-50%,0);
   border-radius:50%;
-  transform:translate3d(-50%,-50%,-1250px);
-  transform-origin:50% 50%;
-  will-change:transform;
-  filter:drop-shadow(0 2vmax 6vmax rgba(140,190,255,.16)) drop-shadow(0 0 3vmax rgba(255,255,255,.10));
+  pointer-events:none;
+  will-change:transform, opacity, border-radius;
+  opacity:0;
 }
 
-/* Inner glass body — clipped to the circle. Handles the actual
-   optical look: refraction of what's behind it via a fixed-strength
-   backdrop-filter (its blur/saturate amounts are never animated —
-   animating those per frame is what causes the GPU blur-texture
-   re-upload bug noted elsewhere in this file, so instead the SAME
-   fixed lens strength simply samples a physically larger patch of
-   the dashboard as the sphere's true on-screen footprint grows from
-   the Z-move above — real optical magnification from real distance
-   change, not an enlarged texture) plus the sphere's own continuous
-   breathing and micro-ripple. */
+/* Water body — the translucent fluid interior */
+.boot-drop-body {
+  position:absolute;
+  left:50%; top:50%;
+  width:14vmin; height:14vmin;
+  transform:translate3d(-50%,-50%,0);
+  border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;  /* tear-drop meniscus */
+  background:
+    radial-gradient(ellipse 70% 60% at 38% 30%,
+      rgba(255,255,255,.82) 0%,
+      rgba(210,235,255,.55) 22%,
+      rgba(160,210,255,.28) 52%,
+      rgba(80,150,220,.40) 80%,
+      rgba(40,100,180,.60) 100%),
+    radial-gradient(ellipse 45% 55% at 62% 68%,
+      rgba(0,20,60,.28) 0%,
+      transparent 70%);
+  box-shadow:
+    inset 0 -2px 8px rgba(0,20,80,.30),
+    inset 0  2px 6px rgba(255,255,255,.65),
+    inset -3px 0 8px rgba(100,170,255,.18),
+    inset  3px 0 8px rgba(200,230,255,.12),
+    0 6px 24px rgba(80,150,220,.22),
+    0 2px 8px  rgba(100,170,255,.16);
+  opacity:0;
+  will-change:transform, border-radius, opacity;
+  pointer-events:none;
+}
+
+/* Droplet materialise from centre of glow */
+.boot-screen.phase-drop .boot-drop-body {
+  animation:bootDropMaterialise 1.4s cubic-bezier(.34,1.28,.64,1) forwards;
+}
+@keyframes bootDropMaterialise {
+  0%   { opacity:0; transform:translate3d(-50%,-50%,0) scale(.06); filter:blur(8px); }
+  18%  { opacity:.7; filter:blur(2px); }
+  42%  { transform:translate3d(-50%,-50%,0) scale(1.08); }
+  58%  { transform:translate3d(-50%,-50%,0) scale(.97); }
+  72%  { transform:translate3d(-50%,-50%,0) scale(1.03); }
+  85%  { transform:translate3d(-50%,-50%,0) scale(.995); }
+  100% { opacity:1; transform:translate3d(-50%,-50%,0) scale(1); filter:blur(0); }
+}
+
+/* Suspended oscillation — subtle micro-wobble while hanging */
+.boot-screen.phase-drop .boot-drop-body.oscillating {
+  animation:bootDropMaterialise 1.4s cubic-bezier(.34,1.28,.64,1) forwards,
+            bootDropOscillate 2.4s ease-in-out 1.5s infinite;
+}
+@keyframes bootDropOscillate {
+  0%,100% { border-radius:50% 50% 50% 50% / 60% 60% 40% 40%; transform:translate3d(-50%,-50%,0) scale(1); }
+  25%     { border-radius:52% 48% 48% 52% / 58% 62% 38% 42%; transform:translate3d(-50%,-51%,0) scale(1.008); }
+  50%     { border-radius:49% 51% 52% 48% / 62% 58% 44% 36%; transform:translate3d(-50%,-49%,0) scale(.996); }
+  75%     { border-radius:51% 49% 47% 53% / 56% 64% 36% 44%; transform:translate3d(-50%,-50.5%,0) scale(1.004); }
+}
+
+/* Specular highlight — primary sparkle on the droplet surface */
+.boot-drop-specular {
+  position:absolute;
+  left:50%; top:50%;
+  width:14vmin; height:14vmin;
+  transform:translate3d(-50%,-50%,0);
+  pointer-events:none;
+  opacity:0;
+  will-change:opacity;
+}
+.boot-drop-specular::before {
+  content:"";
+  position:absolute;
+  left:22%; top:16%;
+  width:30%; height:20%;
+  border-radius:50%;
+  background:radial-gradient(ellipse,
+    rgba(255,255,255,.90) 0%,
+    rgba(255,255,255,.40) 55%,
+    transparent 80%);
+  filter:blur(1.2px);
+}
+.boot-drop-specular::after {
+  content:"";
+  position:absolute;
+  left:58%; top:60%;
+  width:14%; height:10%;
+  border-radius:50%;
+  background:radial-gradient(ellipse,
+    rgba(180,220,255,.55) 0%,
+    transparent 75%);
+  filter:blur(1.5px);
+}
+.boot-screen.phase-drop .boot-drop-specular { opacity:1; transition:opacity .8s ease .9s; }
+
+/* Meniscus edge — thin bright rim that mimics surface tension */
+.boot-drop-meniscus {
+  position:absolute;
+  left:50%; top:50%;
+  width:14vmin; height:14vmin;
+  transform:translate3d(-50%,-50%,0);
+  border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,.60),
+    inset 0  1px 0   rgba(255,255,255,.90),
+    inset 0 -1px 0   rgba(140,190,255,.40),
+    0 0 12px rgba(100,170,255,.18);
+  pointer-events:none;
+  opacity:0;
+  will-change:opacity, border-radius;
+}
+.boot-screen.phase-drop .boot-drop-meniscus { opacity:1; transition:opacity .6s ease 1.0s; }
+
+/* Soft shadow cast by the droplet onto the darkness */
+.boot-drop-shadow {
+  position:absolute;
+  left:50%; top:calc(50% + 7.5vmin);
+  width:12vmin; height:2.5vmin;
+  transform:translate3d(-50%,-50%,0);
+  border-radius:50%;
+  background:radial-gradient(ellipse,
+    rgba(0,20,80,.32) 0%,
+    rgba(0,10,40,.12) 50%,
+    transparent 80%);
+  filter:blur(4px);
+  opacity:0;
+  pointer-events:none;
+  will-change:opacity;
+}
+.boot-screen.phase-drop .boot-drop-shadow { opacity:1; transition:opacity .7s ease 1.1s; }
+
+/* Internal refraction shimmer — light bending inside the drop */
+.boot-drop-refraction {
+  position:absolute;
+  left:50%; top:50%;
+  width:18vmin; height:18vmin;
+  transform:translate3d(-50%,-50%,0);
+  pointer-events:none;
+  opacity:0;
+  overflow:hidden;
+  border-radius:50%;
+}
+.boot-drop-refraction::before {
+  content:"";
+  position:absolute; inset:0;
+  background:linear-gradient(110deg,
+    transparent 28%,
+    rgba(255,255,255,.35) 46%,
+    rgba(200,230,255,.12) 54%,
+    transparent 68%);
+  animation:bootDropRefrSweep 3.2s ease-in-out infinite;
+  will-change:transform;
+}
+@keyframes bootDropRefrSweep {
+  0%   { transform:translateZ(0) translateX(-80%) rotate(-5deg); }
+  50%  { transform:translateZ(0) translateX(20%)  rotate(3deg); }
+  100% { transform:translateZ(0) translateX(-80%) rotate(-5deg); }
+}
+.boot-screen.phase-drop .boot-drop-refraction { opacity:1; transition:opacity .9s ease 1.3s; }
+
+/* ============================================================
+   PHASE 3 — DROPLET → LENS MORPH
+   The body morphs from tear-drop to perfect circle.
+   ============================================================ */
+.boot-screen.phase-morph .boot-drop-body {
+  animation:bootDropToLens .85s cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes bootDropToLens {
+  0%   { border-radius:50% 50% 50% 50% / 60% 60% 40% 40%; }
+  35%  { border-radius:52% 48% 50% 50% / 54% 54% 46% 46%; }
+  100% { border-radius:50%; }
+}
+/* Ripple pulse on transition */
+.boot-screen.phase-morph .boot-drop-meniscus {
+  animation:bootMorphRipple 1.0s cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes bootMorphRipple {
+  0%   { border-radius:50% 50% 50% 50% / 60% 60% 40% 40%; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.60), 0 0 12px rgba(100,170,255,.18); }
+  40%  { box-shadow: inset 0 0 0 2.5px rgba(255,255,255,.80), 0 0 30px rgba(140,200,255,.40); }
+  100% { border-radius:50%; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.50), 0 0 16px rgba(120,180,255,.22); }
+}
+.boot-screen.phase-morph .boot-drop-shadow {
+  animation:bootDropShadowFade .85s ease forwards;
+}
+@keyframes bootDropShadowFade {
+  0%   { opacity:1; }
+  100% { opacity:0; }
+}
+
+/* ============================================================
+   PHASE 4 — LENS EXPANSION (pure 2-D surface-tension stretch)
+   The lens starts at droplet size and expands outward like liquid
+   surface tension pulling a film across the display. No Z-axis.
+   No perspective. Just elastic scale with wave-like easing.
+   JS adds .phase-expand to .boot-screen to trigger expansion;
+   optical layer opacity is driven per-rAF via inline style.
+   ============================================================ */
+
+/* Base state: centred, small (matches droplet size), invisible */
+.boot-sphere {
+  position:absolute; left:50%; top:50%;
+  width:14vmin; height:14vmin;   /* matches drop-body size exactly */
+  border-radius:50%;
+  transform:translate3d(-50%,-50%,0) scale(0);
+  transform-origin:50% 50%;
+  opacity:0;
+  will-change:transform, opacity;
+  filter:drop-shadow(0 1vmin 4vmin rgba(120,180,255,.20))
+         drop-shadow(0 0 2vmin rgba(255,255,255,.14));
+}
+
+/* Expansion: triggered when JS adds .phase-expand to .boot-screen.
+   Variable-speed surface-tension stretch — starts fast (the "pop"
+   of the droplet releasing), decelerates with elastic overshoot,
+   then flows outward in a slow liquid spread. */
+.boot-screen.phase-expand .boot-sphere {
+  animation:
+    bootLensAppear  .18s cubic-bezier(.22,1,.36,1) forwards,
+    bootLensExpand 3.80s cubic-bezier(.14,.72,.28,1.00) .18s forwards;
+}
+@keyframes bootLensAppear {
+  0%   { opacity:0; transform:translate3d(-50%,-50%,0) scale(.85); }
+  100% { opacity:1; transform:translate3d(-50%,-50%,0) scale(1); }
+}
+/* Surface-tension expansion:
+   - Fast initial stretch (liquid film releasing)
+   - Brief elastic overshoot at ~40% (meniscus fighting tension)
+   - Slow liquid spread to full-screen (flowing outward)
+   The cubic-bezier above gives variable speed; keyframe offsets
+   add the elastic wave character on top. */
+@keyframes bootLensExpand {
+  0%   { transform:translate3d(-50%,-50%,0) scale(1.00); }
+  12%  { transform:translate3d(-50%,-50%,0) scale(2.80); }  /* fast initial pop */
+  22%  { transform:translate3d(-50%,-50%,0) scale(2.50); }  /* elastic pull-back */
+  35%  { transform:translate3d(-50%,-50%,0) scale(3.20); }  /* secondary wave out */
+  50%  { transform:translate3d(-50%,-50%,0) scale(4.80); }  /* liquid spread */
+  70%  { transform:translate3d(-50%,-50%,0) scale(7.50); }  /* flows to edges */
+  85%  { transform:translate3d(-50%,-50%,0) scale(9.80); }
+  100% { transform:translate3d(-50%,-50%,0) scale(12.0); }  /* fills frame */
+}
+
+/* Glass body — fixed backdrop-filter (never animated per-frame) */
 .boot-sphere-inner {
   position:absolute; inset:0; border-radius:50%;
   overflow:hidden; isolation:isolate; contain:paint;
-  backdrop-filter:blur(3px) saturate(168%) brightness(1.06) contrast(1.04);
-  -webkit-backdrop-filter:blur(3px) saturate(168%) brightness(1.06) contrast(1.04);
+  -webkit-backdrop-filter:blur(3px) saturate(170%) brightness(1.07) contrast(1.05);
+          backdrop-filter:blur(3px) saturate(170%) brightness(1.07) contrast(1.05);
   background:
-    radial-gradient(115% 130% at 30% 26%, rgba(255,255,255,.42) 0%, rgba(255,255,255,.14) 16%, rgba(210,232,255,.05) 34%, rgba(10,20,35,.02) 58%, rgba(4,10,20,.16) 84%, rgba(2,6,14,.30) 100%);
+    radial-gradient(115% 130% at 30% 26%,
+      rgba(255,255,255,.44) 0%,
+      rgba(255,255,255,.16) 16%,
+      rgba(210,232,255,.06) 34%,
+      rgba(10,20,35,.02)    58%,
+      rgba(4,10,20,.18)     84%,
+      rgba(2,6,14,.32)      100%);
   box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.30),
-    inset -3.2vmin -2.2vmin 6vmin rgba(255,120,130,.09),
-    inset 3.2vmin 2.2vmin 6vmin rgba(120,175,255,.13),
-    inset 0 0 5vmin rgba(255,255,255,.10),
-    inset 0 -3vmin 5vmin rgba(0,10,25,.22);
-  animation:bootBreathe 4.6s ease-in-out infinite, bootRippleShape 7.5s ease-in-out infinite;
+    inset 0 0 0 1px rgba(255,255,255,.32),
+    inset -3.2vmin -2.2vmin 6vmin rgba(255,120,130,.10),
+    inset  3.2vmin  2.2vmin 6vmin rgba(120,175,255,.15),
+    inset 0 0 5vmin rgba(255,255,255,.12),
+    inset 0 -3vmin 5vmin rgba(0,10,25,.24);
+  /* Breathing + edge-wave simultaneously — both are transform/border-radius only */
+  animation:bootLensBreathe 4.8s ease-in-out infinite,
+            bootLensEdgeWave 6.5s ease-in-out infinite;
   will-change:transform, border-radius;
 }
-@keyframes bootBreathe {
+@keyframes bootLensBreathe {
   0%,100% { transform:scale(1); }
-  50%     { transform:scale(1.022); }
+  50%     { transform:scale(1.018); }
 }
-@keyframes bootRippleShape {
+/* Circumferential pressure waves — elastic edge deformation */
+@keyframes bootLensEdgeWave {
   0%,100% { border-radius:50%; }
-  25%     { border-radius:52% 48% 47% 53%/48% 52% 46% 54%; }
-  50%     { border-radius:47% 53% 52% 48%/53% 47% 54% 46%; }
-  75%     { border-radius:53% 47% 48% 52%/46% 54% 47% 53%; }
+  14%     { border-radius:51.5% 48.5% 49%   51%   / 49.5% 50.5% 48%   52%; }
+  28%     { border-radius:48.5% 51.5% 51%   49%   / 51%   49%   52%   48%; }
+  42%     { border-radius:50.8% 49.2% 48.5% 51.5% / 50%   50%   49.5% 50.5%; }
+  57%     { border-radius:49.5% 50.5% 51.5% 48.5% / 51.5% 48.5% 50.5% 49.5%; }
+  71%     { border-radius:50.5% 49.5% 50%   50%   / 48.5% 51.5% 50%   50%; }
+  85%     { border-radius:49.2% 50.8% 50.8% 49.2% / 50.8% 49.2% 51%   49%; }
 }
 
-/* Internal reflection sweeping across the glass. Nested in its own
-   wrapper so JS can continuously re-aim it (rotate/translate — GPU-
-   safe transform only) as the simulated camera distance changes,
-   giving the impression the reflection is shifting with perspective
-   as the object turns toward the viewer, independent of the sheen's
-   own perpetual sweep underneath it. */
+/* Internal refraction sweep — JS re-aims this wrapper's transform each frame */
 .boot-sphere-refraction-wrap {
   position:absolute; inset:-25%;
   will-change:transform;
 }
 .boot-sphere-refraction {
   position:absolute; inset:0;
-  background:linear-gradient(115deg, transparent 32%, rgba(255,255,255,.4) 49%, rgba(215,235,255,.14) 56%, transparent 72%);
+  background:linear-gradient(115deg,
+    transparent 30%,
+    rgba(255,255,255,.42) 48%,
+    rgba(215,235,255,.15) 56%,
+    transparent 72%);
   mix-blend-mode:screen;
-  animation:bootSphereSheen 4.2s ease-in-out infinite;
+  animation:bootLensRefrSweep 4.4s ease-in-out infinite;
   will-change:transform;
-  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden;
 }
-@keyframes bootSphereSheen {
-  0%   { transform:translateZ(0) translateX(-55%) translateY(-8%) rotate(0deg); }
-  50%  { transform:translateZ(0) translateX(18%) translateY(8%) rotate(3deg); }
-  100% { transform:translateZ(0) translateX(-55%) translateY(-8%) rotate(0deg); }
+@keyframes bootLensRefrSweep {
+  0%   { transform:translateZ(0) translateX(-58%) translateY(-8%) rotate(0deg); }
+  50%  { transform:translateZ(0) translateX(20%)  translateY(8%)  rotate(3deg); }
+  100% { transform:translateZ(0) translateX(-58%) translateY(-8%) rotate(0deg); }
 }
 
-/* Soft rotating caustics — faint refracted light patterns drifting
-   inside the glass. Base opacity is raised continuously by JS as the
-   sphere nears the camera, so refraction visibly intensifies with
-   proximity (opacity is compositor-only and safe to touch every
-   frame — the underlying backdrop-filter strength itself is never
-   touched). */
+/* Rotating caustic highlights */
 .boot-sphere-caustic {
   position:absolute; inset:0; border-radius:inherit;
-  background:conic-gradient(from 90deg at 46% 46%, rgba(120,180,255,.12), rgba(200,240,255,.16), rgba(140,205,225,.10), rgba(120,180,255,.12));
+  background:conic-gradient(from 90deg at 46% 46%,
+    rgba(120,190,255,.13),
+    rgba(200,245,255,.17),
+    rgba(140,210,230,.11),
+    rgba(120,190,255,.13));
   mix-blend-mode:screen;
   opacity:.35;
-  animation:bootCausticSpin 9s linear infinite;
+  animation:bootCausticSpin 9.5s linear infinite;
   will-change:transform, opacity;
-  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden;
 }
 @keyframes bootCausticSpin { to { transform:translateZ(0) rotate(360deg); } }
 
-/* Fresnel edge — a thin bright rim with a faint chromatic split,
-   always present at low strength. */
+/* Internal caustic highlight — a second layer for complexity */
+.boot-sphere-caustic-b {
+  position:absolute; inset:0; border-radius:inherit;
+  background:conic-gradient(from 210deg at 54% 54%,
+    rgba(255,200,120,.06),
+    rgba(200,240,255,.12),
+    rgba(255,200,120,.06));
+  mix-blend-mode:screen;
+  opacity:.22;
+  animation:bootCausticSpinB 14s linear 1.5s infinite;
+  will-change:transform;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden;
+}
+@keyframes bootCausticSpinB { to { transform:translateZ(0) rotate(-360deg); } }
+
+/* Fresnel rim — chromatic split at the edge */
 .boot-sphere-fresnel {
   position:absolute; inset:0; border-radius:50%;
   box-shadow:
-    inset 0 0 0 1.5px rgba(255,255,255,.4),
-    inset -0.9vmin 0 2.4vmin rgba(255,110,120,.10),
-    inset 0.9vmin 0 2.4vmin rgba(120,170,255,.13),
-    inset 0 0 4.5vmin rgba(255,255,255,.08);
+    inset 0 0 0 1.5px rgba(255,255,255,.42),
+    inset -0.9vmin 0 2.6vmin rgba(255,110,120,.11),
+    inset  0.9vmin 0 2.6vmin rgba(120,170,255,.14),
+    inset 0 0 4.8vmin rgba(255,255,255,.09);
   mix-blend-mode:screen;
   pointer-events:none;
 }
-/* A second, stronger rim with deeper chromatic separation and a
-   heavier inner shadow — its box-shadow values are fixed (never
-   animated), but JS fades its opacity in as the sphere approaches,
-   so the glass reads as physically thicker and more strongly
-   refractive the closer it gets, without ever re-painting a
-   changing box-shadow. */
+/* Deeper Fresnel — faded in by JS as distance closes */
 .boot-sphere-fresnel-deep {
   position:absolute; inset:0; border-radius:50%;
   opacity:0;
   box-shadow:
-    inset 0 0 0 2.5px rgba(255,255,255,.5),
-    inset -2.6vmin 0 6vmin rgba(255,90,110,.16),
-    inset 2.6vmin 0 6vmin rgba(90,160,255,.20),
-    inset 0 0 9vmin rgba(255,255,255,.14),
-    inset 0 -2.4vmin 7vmin rgba(0,10,25,.28);
+    inset 0 0 0 2.5px rgba(255,255,255,.52),
+    inset -2.6vmin 0 6vmin rgba(255,90,110,.17),
+    inset  2.6vmin 0 6vmin rgba(90,160,255,.22),
+    inset 0 0 9vmin rgba(255,255,255,.15),
+    inset 0 -2.4vmin 7vmin rgba(0,10,25,.30);
   mix-blend-mode:screen;
   pointer-events:none;
   will-change:opacity;
 }
 
-/* Small specular hot-spot, like a bright window reflection caught on
-   the curved surface. Wrapped so JS can slowly orbit it around the
-   rim (rotate only) as the approach progresses — a Fresnel highlight
-   physically moves around the edge of a lens as the viewing angle to
-   it changes, rather than sitting fixed in one corner throughout. */
+/* Specular highlight — JS orbits this wrapper around the rim */
 .boot-sphere-highlight-wrap {
   position:absolute; inset:0;
   will-change:transform;
@@ -1705,74 +1975,280 @@ body.booting .conn-pill.revealed {
 .boot-sphere-highlight {
   position:absolute; width:34%; height:22%; left:20%; top:16%;
   border-radius:50%;
-  background:radial-gradient(closest-side, rgba(255,255,255,.75), rgba(255,255,255,.18) 55%, transparent 80%);
+  background:radial-gradient(closest-side,
+    rgba(255,255,255,.78),
+    rgba(255,255,255,.20) 55%,
+    transparent 80%);
   filter:blur(1.5vmin);
   mix-blend-mode:screen;
   opacity:.85;
-  animation:bootHighlightPulse 4.6s ease-in-out infinite;
+  animation:bootHighlightPulse 4.8s ease-in-out infinite;
 }
 @keyframes bootHighlightPulse {
-  0%,100% { opacity:.7; }
-  50%     { opacity:.95; }
+  0%,100% { opacity:.68; }
+  50%     { opacity:.96; }
 }
 
-/* Soft outer glow — a plain, non-backdrop-filter layer whose opacity
-   JS raises as the sphere nears, standing in for the light spilling
-   and caustic pooling a real thick lens throws off as it draws
-   closer to a light source/camera. */
+/* Secondary dim specular spot */
+.boot-sphere-highlight-2 {
+  position:absolute; width:16%; height:10%; left:58%; top:58%;
+  border-radius:50%;
+  background:radial-gradient(closest-side,
+    rgba(180,220,255,.45),
+    transparent 75%);
+  filter:blur(2vmin);
+  mix-blend-mode:screen;
+  opacity:.5;
+  animation:bootHighlight2Pulse 6.2s ease-in-out 1.2s infinite;
+}
+@keyframes bootHighlight2Pulse {
+  0%,100% { opacity:.35; }
+  50%     { opacity:.62; }
+}
+
+/* Thin-film interference — extremely subtle rainbow at the rim */
+.boot-sphere-thinfilm {
+  position:absolute; inset:-1px; border-radius:50%;
+  box-shadow:
+    0 0 0 0.5px rgba(255,80,60,.04),
+    0 0 0 1.0px rgba(80,140,255,.03),
+    0 0 0 1.5px rgba(60,200,120,.02);
+  mix-blend-mode:screen;
+  opacity:.7;
+  pointer-events:none;
+}
+
+/* Outer luminous glow — JS raises opacity with approach */
 .boot-sphere-glow {
-  position:absolute; inset:-30%; border-radius:50%;
-  background:radial-gradient(circle, rgba(190,220,255,.22) 0%, rgba(190,220,255,.08) 45%, transparent 72%);
+  position:absolute; inset:-32%; border-radius:50%;
+  background:radial-gradient(circle,
+    rgba(190,225,255,.24) 0%,
+    rgba(190,220,255,.08) 45%,
+    transparent 72%);
   opacity:.12;
   pointer-events:none;
   will-change:opacity;
 }
 
-/* Boot logo — empty div kept for JS hook only; never shown (no branding) */
-.boot-logo { position:relative; z-index:2; width:0; height:0; opacity:0; }
+/* Soft haze inside the glass — slight milkiness for volumetric depth */
+.boot-sphere-haze {
+  position:absolute; inset:0; border-radius:50%;
+  background:radial-gradient(circle at 50% 55%,
+    rgba(200,230,255,.07) 0%,
+    transparent 65%);
+  pointer-events:none;
+}
 
-/* Droplet element kept for JS timing/reveal continuity only — never
-   rendered (no particles/shards are used in this animation). */
-.boot-droplet { position:fixed; opacity:0 !important; pointer-events:none; }
+/* Chromatic aberration — visible only near the high-contrast edge,
+   fades before expansion completes */
+.boot-sphere-ca {
+  position:absolute; inset:-2px; border-radius:50%;
+  box-shadow:
+    0 0 0 1px rgba(255,40,30,.05),
+    0 0 0 2px rgba(40,120,255,.04);
+  mix-blend-mode:screen;
+  opacity:0;
+  pointer-events:none;
+  will-change:opacity;
+  /* CA fades out during expansion — driven by JS */
+}
 
+/* ============================================================
+   PHASE 5 — EXPANDING LENS → DASHBOARD REVEAL
+   Surface-tension stretch: small waves from centre to edge,
+   elastic settling, variable speed. Handled by JS rAF loop.
+   CSS here provides the expanding ring pressure-wave effect.
+   ============================================================ */
+.boot-expand-ring {
+  position:absolute; left:50%; top:50%;
+  width:14vmin; height:14vmin;
+  transform:translate3d(-50%,-50%,0) scale(1);
+  border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.35);
+  opacity:0;
+  pointer-events:none;
+  will-change:transform, opacity;
+}
+.boot-screen.phase-expand .boot-expand-ring {
+  animation:bootExpandRing 2.8s cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes bootExpandRing {
+  0%   { transform:translate3d(-50%,-50%,0) scale(.8); opacity:.8; }
+  60%  { opacity:.25; }
+  100% { transform:translate3d(-50%,-50%,0) scale(6); opacity:0; }
+}
+
+/* Second trailing ring — slight delay for wave feel */
+.boot-expand-ring-2 {
+  position:absolute; left:50%; top:50%;
+  width:14vmin; height:14vmin;
+  transform:translate3d(-50%,-50%,0) scale(1);
+  border-radius:50%;
+  border:1px solid rgba(200,230,255,.22);
+  opacity:0;
+  pointer-events:none;
+  will-change:transform, opacity;
+}
+.boot-screen.phase-expand .boot-expand-ring-2 {
+  animation:bootExpandRing 3.2s cubic-bezier(.22,1,.36,1) .25s forwards;
+}
+
+/* Bloom on the brightest reflections only */
+.boot-bloom {
+  position:absolute; left:50%; top:50%;
+  width:20vmin; height:20vmin;
+  transform:translate3d(-50%,-50%,0);
+  border-radius:50%;
+  background:radial-gradient(circle,
+    rgba(255,255,255,.18) 0%,
+    rgba(200,230,255,.07) 35%,
+    transparent 65%);
+  filter:blur(8px);
+  opacity:0;
+  pointer-events:none;
+  mix-blend-mode:screen;
+  will-change:opacity;
+}
+.boot-screen.phase-expand .boot-bloom {
+  animation:bootBloomPulse 1.6s ease-out forwards;
+}
+@keyframes bootBloomPulse {
+  0%   { opacity:0; }
+  25%  { opacity:.7; }
+  100% { opacity:0; }
+}
+
+/* ============================================================
+   DEPTH-OF-FIELD ILLUSION — subtle blur on the outer glow
+   giving a very gentle perspective / camera feel
+   ============================================================ */
+.boot-dof {
+  position:absolute; inset:0;
+  background:radial-gradient(ellipse 50% 50% at 50% 50%,
+    transparent 30%,
+    rgba(0,0,0,.04) 100%);
+  pointer-events:none;
+}
+
+/* Parallax reflection plate — moves opposite to expansion */
+.boot-parallax-plate {
+  position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 40% at 35% 30%,
+    rgba(255,255,255,.04) 0%,
+    transparent 70%);
+  pointer-events:none;
+  will-change:transform;
+}
+
+/* ============================================================
+   REDUCED MOTION — fast, clean skip
+   ============================================================ */
 @media (prefers-reduced-motion:reduce) {
-  .boot-stage, .boot-sphere, .boot-sphere-inner, .boot-sphere-refraction,
-  .boot-sphere-refraction-wrap, .boot-sphere-caustic, .boot-sphere-fresnel,
-  .boot-sphere-fresnel-deep, .boot-sphere-highlight, .boot-sphere-highlight-wrap,
-  .boot-ring, .boot-particle, .boot-rays span, .boot-veil { animation:none !important; }
-  .boot-screen { transition-duration:.25s; }
+  .boot-stage, .boot-sphere, .boot-sphere-inner,
+  .boot-sphere-refraction, .boot-sphere-refraction-wrap,
+  .boot-sphere-caustic, .boot-sphere-caustic-b,
+  .boot-sphere-fresnel, .boot-sphere-fresnel-deep,
+  .boot-sphere-highlight, .boot-sphere-highlight-wrap,
+  .boot-sphere-highlight-2, .boot-sphere-thinfilm,
+  .boot-sphere-glow, .boot-sphere-haze, .boot-sphere-ca,
+  .boot-expand-ring, .boot-expand-ring-2, .boot-bloom,
+  .boot-drop-body, .boot-drop-specular, .boot-drop-meniscus,
+  .boot-drop-shadow, .boot-drop-refraction,
+  .boot-ambient-glow, .boot-dof, .boot-parallax-plate,
+  .boot-ring, .boot-particle, .boot-rays span, .boot-veil {
+    animation:none !important;
+  }
+  .boot-screen { transition-duration:.2s; }
 }
 </style>
 </head>
 <body class="booting">
 
 <!-- ============================================================
-     BOOT SEQUENCE — cinematic liquid glass system boot
+     BOOT SEQUENCE — Cinematic Liquid-Glass Droplet Animation
+     Phase 1 : darkness → ambient centre glow
+     Phase 2 : water droplet materialises with surface tension
+     Phase 3 : droplet morphs into circular glass lens
+     Phase 4 : lens expands via surface-tension stretch
+     Phase 5 : glass dissolves / dashboard crossfades in
      ============================================================ -->
 <div class="boot-screen" id="bootScreen">
+
+  <!-- Structural stubs (JS hooks — never visible) -->
   <div class="boot-veil"></div>
-  <div class="boot-rays">
+  <div class="boot-particles" id="bootParticles"></div>
+  <div class="boot-logo"     id="bootLogo"></div>
+  <div class="boot-droplet"  id="bootDroplet"></div>
+
+  <!-- PHASE 1 — Ambient glow: faint centre light before the drop appears -->
+  <div class="boot-ambient-glow" id="bootAmbientGlow"></div>
+
+  <!-- Volumetric god rays (sweep while drop forms, linger through expansion) -->
+  <div class="boot-rays" aria-hidden="true">
     <span></span><span></span><span></span><span></span><span></span><span></span>
   </div>
-  <div class="boot-particles" id="bootParticles"></div>
+
+  <!-- Depth-of-field subtle vignette / parallax plate -->
+  <div class="boot-dof"></div>
+  <div class="boot-parallax-plate" id="bootParallaxPlate"></div>
+
+  <!-- PHASE 2 — Water droplet (materialises, hangs, oscillates) -->
+  <div class="boot-drop-shadow"    id="bootDropShadow"></div>
+  <div class="boot-drop-body"      id="bootDropBody"></div>
+  <div class="boot-drop-meniscus"  id="bootDropMeniscus"></div>
+  <div class="boot-drop-specular"  id="bootDropSpecular"></div>
+  <div class="boot-drop-refraction"id="bootDropRefraction"></div>
+
+  <!-- PHASE 3 / 4 / 5 — Liquid glass lens (JS drives Z-translation each rAF) -->
   <div class="boot-stage" id="bootStage">
     <div class="boot-sphere" id="bootSphere">
+
+      <!-- Outer luminous glow (JS raises opacity with approach) -->
       <div class="boot-sphere-glow"></div>
+
+      <!-- Glass body with all optical layers inside the clip -->
       <div class="boot-sphere-inner">
+
+        <!-- Internal refraction sweep (JS re-aims wrapper transform) -->
         <div class="boot-sphere-refraction-wrap" id="bootRefractionWrap">
           <span class="boot-sphere-refraction"></span>
         </div>
-        <span class="boot-sphere-caustic" id="bootCaustic"></span>
+
+        <!-- Rotating caustic highlights — two layers for depth -->
+        <span class="boot-sphere-caustic"   id="bootCaustic"></span>
+        <span class="boot-sphere-caustic-b"></span>
+
+        <!-- Specular hot-spot (JS orbits highlight-wrap around rim) -->
         <div class="boot-sphere-highlight-wrap" id="bootHighlightWrap">
           <span class="boot-sphere-highlight"></span>
+          <span class="boot-sphere-highlight-2"></span>
         </div>
-      </div>
+
+        <!-- Slight internal haze for volumetric glass feel -->
+        <div class="boot-sphere-haze"></div>
+
+      </div><!-- /.boot-sphere-inner -->
+
+      <!-- Fresnel rim (always-on thin chromatic split) -->
       <div class="boot-sphere-fresnel"></div>
+      <!-- Deeper Fresnel rim (JS fades in as sphere nears) -->
       <div class="boot-sphere-fresnel-deep" id="bootFresnelDeep"></div>
-      <div class="boot-logo" id="bootLogo"></div>
-    </div>
-  </div>
-</div>
+      <!-- Thin-film interference colours (extremely subtle) -->
+      <div class="boot-sphere-thinfilm"></div>
+      <!-- Chromatic aberration near edges (JS fades out mid-expansion) -->
+      <div class="boot-sphere-ca" id="bootSphereCA"></div>
+
+    </div><!-- /.boot-sphere -->
+  </div><!-- /.boot-stage -->
+
+  <!-- PHASE 4 — Expansion pressure waves (centre → edge) -->
+  <div class="boot-expand-ring"   id="bootExpandRing"></div>
+  <div class="boot-expand-ring-2" id="bootExpandRing2"></div>
+
+  <!-- Bloom on the brightest reflections (only during expansion peak) -->
+  <div class="boot-bloom" id="bootBloom"></div>
+
+</div><!-- /.boot-screen -->
 
 <!-- SVG DEFS -->
 <svg style="position:absolute;width:0;height:0;overflow:hidden;" aria-hidden="true">
@@ -3311,100 +3787,169 @@ function revealElement(el, delay) {
 }
 
 function runBootSequence() {
-  const boot  = document.getElementById('bootScreen');
-  const stage = document.getElementById('bootStage');
-  const sphere = document.getElementById('bootSphere');
-  const refractionWrap = document.getElementById('bootRefractionWrap');
-  const highlightWrap  = document.getElementById('bootHighlightWrap');
-  const fresnelDeep    = document.getElementById('bootFresnelDeep');
-  const caustic        = document.getElementById('bootCaustic');
-  const glow = sphere ? sphere.querySelector('.boot-sphere-glow') : null;
+  /* ---- grab elements ---- */
+  const boot          = document.getElementById('bootScreen');
+  const stage         = document.getElementById('bootStage');
+  const sphere        = document.getElementById('bootSphere');
+  const refractionWrap= document.getElementById('bootRefractionWrap');
+  const highlightWrap = document.getElementById('bootHighlightWrap');
+  const fresnelDeep   = document.getElementById('bootFresnelDeep');
+  const caustic       = document.getElementById('bootCaustic');
+  const glow          = sphere ? sphere.querySelector('.boot-sphere-glow') : null;
+  const sphereCA      = document.getElementById('bootSphereCA');
+  const dropBody      = document.getElementById('bootDropBody');
+  const dropMeniscus  = document.getElementById('bootDropMeniscus');
+  const dropSpecular  = document.getElementById('bootDropSpecular');
+  const dropShadow    = document.getElementById('bootDropShadow');
+  const dropRefraction= document.getElementById('bootDropRefraction');
+  const ambientGlow   = document.getElementById('bootAmbientGlow');
+  const expandRing    = document.getElementById('bootExpandRing');
+  const expandRing2   = document.getElementById('bootExpandRing2');
+  const bloom         = document.getElementById('bootBloom');
+  const parallaxPlate = document.getElementById('bootParallaxPlate');
+
   spawnBootParticles();
   playBootSound();
 
-  // Reduced motion: skip the full show, reveal quickly and cleanly
+  /* ---- reduced-motion fast path ---- */
   if (prefersReducedMotion) {
     document.body.classList.remove('booting');
-    document.querySelectorAll('.layout .glass, #tabbar, .conn-pill').forEach(el => el.classList.add('revealed'));
+    document.querySelectorAll('.layout .glass, #tabbar, .conn-pill')
+            .forEach(el => el.classList.add('revealed'));
     boot.classList.add('boot-out');
     setTimeout(() => boot.classList.add('boot-gone'), 300);
     finishBoot();
     return;
   }
 
-  // The sphere travels through real simulated 3D depth (translateZ
-  // under the stage's CSS perspective) rather than being scaled as a
-  // flat texture. PERSPECTIVE must match .boot-stage's perspective.
-  // Z_START is far behind the camera plane (small, distant); Z_END
-  // sits close to — but safely short of — the perspective distance,
-  // so foreshortening alone drives most of the growth honestly, with
-  // headroom left before the projection would blow up.
-  const PERSPECTIVE = 1400;
-  const Z_START = -1250;
-  const Z_END = 1260;
-  const APPROACH_DURATION = 4100;
+  /* ================================================================
+     SPRING / EASING HELPERS
+     All motion uses physically-inspired curves — no linear lerps.
+     ================================================================ */
+  // Cubic ease-in (slow start, fast finish) — mass pulled toward camera
+  function easeInCubic(t)  { return t * t * t; }
+  // Elastic overshoot spring (for lens arrival)
+  function easeOutElastic(t) {
+    if (t === 0 || t === 1) return t;
+    const c4 = (2 * Math.PI) / 4.2;
+    return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
+  }
+  // Smooth step — used for CA fade
+  function smoothStep(t) { return t * t * (3 - 2 * t); }
 
-  // Once the lens has physically arrived and fills the frame: snap to
-  // full blur, then crossfade (blur 20px -> 0px, opacity 1 -> 0) so
-  // the glass melts into transparency while the dashboard beneath it
-  // fades in. Plays exactly once — no looping.
+  /* ================================================================
+     PHASE 1 — DARKNESS → AMBIENT GLOW  (0 – 1.4 s)
+     ================================================================ */
+  // Faint centre radial glow rises from pure black
+  setTimeout(() => {
+    if (boot) boot.classList.add('phase-glow');
+  }, 80);
+
+  /* ================================================================
+     PHASE 2 — WATER DROPLET MATERIALISES  (1.0 – 2.8 s)
+     ================================================================ */
+  // CSS classes trigger the keyframe animations
+  setTimeout(() => {
+    if (boot) boot.classList.add('phase-drop');
+    // Let the droplet settle, then start oscillation
+    setTimeout(() => {
+      if (dropBody) dropBody.classList.add('oscillating');
+    }, 1500);
+  }, 1000);
+
+  /* ================================================================
+     PHASE 3 — DROPLET → LENS MORPH  (3.0 – 3.9 s)
+     Smooth border-radius transition from teardrop to perfect circle.
+     ================================================================ */
+  setTimeout(() => {
+    // Remove oscillation, add morph class
+    if (dropBody) dropBody.classList.remove('oscillating');
+    if (boot)     boot.classList.add('phase-morph');
+
+    // After morph completes, dissolve the droplet elements and hand
+    // off to the 3-D sphere approach
+    setTimeout(() => {
+      [dropBody, dropMeniscus, dropSpecular, dropShadow, dropRefraction].forEach(el => {
+        if (el) { el.style.transition = 'opacity .55s ease'; el.style.opacity = '0'; }
+      });
+      if (ambientGlow) { ambientGlow.style.transition = 'opacity .55s ease'; ambientGlow.style.opacity = '0'; }
+    }, 820);
+  }, 3050);
+
+  /* ================================================================
+     PHASE 4 — LENS EXPANSION via 3-D Z approach  (3.9 – 8.0 s)
+     Identical rAF loop to the original; extended with CA fade-out,
+     parallax reflection, and expansion ring triggers.
+     ================================================================ */
+  const PERSPECTIVE      = 1400;
+  const Z_START          = -1250;
+  const Z_END            =  1260;
+  const APPROACH_DURATION = 4100;  // ms
+
   function finishApproach() {
+    /* Trigger bloom / rings on final arrival */
+    if (boot) boot.classList.add('phase-expand');
+
     boot.classList.add('boot-filled');
     requestAnimationFrame(() => requestAnimationFrame(() => {
       boot.classList.add('boot-out');
       revealDashboard();
-      setTimeout(() => { boot.classList.add('boot-gone'); document.body.classList.remove('booting'); }, 2700);
+      setTimeout(() => {
+        boot.classList.add('boot-gone');
+        document.body.classList.remove('booting');
+      }, 2700);
     }));
   }
 
-  // Single continuous rAF-driven approach — no discrete animation
-  // phases to hitch or pop between. An ease-in cubic curve (p = t^3)
-  // gives the sphere almost no velocity at the start and builds
-  // continuously to a fast finish, like something with real mass
-  // being pulled toward the camera. The same progress value (p) also
-  // drives every optical layer below, so the glass's refraction,
-  // reflections and apparent thickness evolve in lockstep with the
-  // actual simulated distance rather than on their own timers.
   function stepApproach(startTime, now) {
     if (startTime === null) startTime = now;
-    const t = Math.min(1, (now - startTime) / APPROACH_DURATION);
-    const p = t * t * t;
-    const z = Z_START + (Z_END - Z_START) * p;
+    const t  = Math.min(1, (now - startTime) / APPROACH_DURATION);
+    const p  = easeInCubic(t);            // physically-inspired spring
+    const z  = Z_START + (Z_END - Z_START) * p;
 
+    /* -- Z translation — real perspective depth move, never scale() -- */
     if (sphere) sphere.style.transform = `translate3d(-50%, -50%, ${z.toFixed(1)}px)`;
 
-    // Reflection shifts across the glass as the perspective angle
-    // to it changes (transform-only — safe to update every frame).
+    /* -- Refraction angle shifts as perspective changes -- */
     if (refractionWrap) {
       refractionWrap.style.transform =
         `rotate(${(p * 26).toFixed(2)}deg) translate(${(p * 6).toFixed(2)}%, ${(p * -4).toFixed(2)}%)`;
     }
-    // The Fresnel highlight slowly orbits the rim rather than sitting
-    // fixed in one corner, as it would on an approaching real lens.
+
+    /* -- Fresnel highlight orbits the rim (parallax feel) -- */
     if (highlightWrap) highlightWrap.style.transform = `rotate(${(p * 68).toFixed(2)}deg)`;
 
-    // Apparent thickness / refraction strength: crossfade in the
-    // deeper rim and boost the caustic and glow opacity — all
-    // opacity-only, never touching the backdrop-filter's own blur
-    // strength, so no GPU blur-texture re-upload is triggered.
+    /* -- Optical layers: opacity only — never touch backdrop-filter -- */
     if (fresnelDeep) fresnelDeep.style.opacity = p.toFixed(3);
-    if (caustic)      caustic.style.opacity = (0.35 + p * 0.5).toFixed(3);
-    if (glow)          glow.style.opacity = (0.12 + p * 0.55).toFixed(3);
+    if (caustic)     caustic.style.opacity      = (0.35 + p * 0.50).toFixed(3);
+    if (glow)        glow.style.opacity         = (0.12 + p * 0.56).toFixed(3);
+
+    /* -- Chromatic aberration: peaks at ~50% approach, fades to 0 -- */
+    if (sphereCA) {
+      const caStrength = (t < 0.5)
+        ? smoothStep(t * 2) * 0.75
+        : (1 - smoothStep((t - 0.5) * 2)) * 0.75;
+      sphereCA.style.opacity = caStrength.toFixed(3);
+    }
+
+    /* -- Very subtle parallax on the glow plate -- */
+    if (parallaxPlate) {
+      parallaxPlate.style.transform =
+        `translate(${(p * -2).toFixed(2)}%, ${(p * -1.5).toFixed(2)}%)`;
+    }
 
     if (t < 1) {
-      requestAnimationFrame((n) => stepApproach(startTime, n));
+      requestAnimationFrame(n => stepApproach(startTime, n));
     } else {
       finishApproach();
     }
   }
 
-  // 0.5s in complete darkness with the single sphere floating and
-  // breathing, then the light beams begin their sweep as the sphere
-  // starts its physical journey toward the camera.
+  // Start lens approach after morph + dissolve window
   setTimeout(() => {
-    stage.classList.add('boot-grow');
-    requestAnimationFrame((n) => stepApproach(null, n));
-  }, 500);
+    stage.classList.add('boot-grow');      // triggers god-ray sweeps
+    requestAnimationFrame(n => stepApproach(null, n));
+  }, 3920);
 }
 
 function revealDashboard() {
