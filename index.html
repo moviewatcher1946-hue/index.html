@@ -572,10 +572,6 @@ body.shaking { animation: screenShake .4s ease; }
   border-radius:28px;box-shadow:var(--shadow-card);
   padding:22px;margin-bottom:18px;overflow:hidden;
   transition:box-shadow .45s cubic-bezier(.25,.46,.45,.94),transform .35s cubic-bezier(.25,.46,.45,.94),filter .35s ease;
-  will-change:transform;
-  isolation:isolate;
-  contain:paint;
-  -webkit-mask-image:-webkit-radial-gradient(white,black);
 }
 .glass::before {
   content:"";position:absolute;top:0;left:0;right:0;height:52%;
@@ -589,14 +585,9 @@ body.shaking { animation: screenShake .4s ease; }
 }
 .glass:hover::after { opacity:.45; }
 .glass.idle-sheen::after {
-  opacity:.40;
-  background:linear-gradient(135deg,transparent 20%,rgba(255,255,255,.45) 50%,transparent 80%);
-  animation:sheenSweep 7s ease-in-out infinite;
-}
-@keyframes sheenSweep {
-  0%,100% { transform:translateX(-60%) translateY(-10%) rotate(-8deg); }
-  33%      { transform:translateX(60%) translateY(10%) rotate(8deg); }
-  66%      { transform:translateX(0%) translateY(60%) rotate(0deg); }
+  /* Static soft highlight for touch devices — no motion, so it doesn't
+     read as a shimmer constantly sweeping across every card. */
+  opacity:.22;
 }
 
 .glass.refreshing {
@@ -1198,9 +1189,6 @@ body.shaking { animation: screenShake .4s ease; }
   border-top:1px solid rgba(255,255,255,.96);border-left:1px solid rgba(255,255,255,.80);
   border-right:1px solid rgba(255,255,255,.65);border-bottom:1px solid rgba(255,255,255,.32);
   border-radius:999px;
-  isolation:isolate;
-  contain:paint;
-  -webkit-mask-image:-webkit-radial-gradient(white,black);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.96),
     inset 0 0 0 1px rgba(255,255,255,.28),
@@ -1210,7 +1198,7 @@ body.shaking { animation: screenShake .4s ease; }
     0 22px 55px rgba(20,60,30,.16),
     0 42px 85px rgba(20,60,30,.09),
     0 0 80px rgba(61,141,122,.06);
-  overflow:visible;
+  overflow:hidden;
 }
 
 .tabbar::before {
@@ -1223,14 +1211,9 @@ body.shaking { animation: screenShake .4s ease; }
   content:"";
   position:absolute;inset:0;border-radius:999px;
   background:radial-gradient(180px 65px at var(--mx) var(--my),rgba(255,255,255,.72),transparent 72%);
-  opacity:.55;
-  animation:tabSheenSweep 8s ease-in-out infinite;
+  opacity:.45;
   pointer-events:none;z-index:1;
-}
-@keyframes tabSheenSweep {
-  0%,100% { --mx:8%;--my:50%; }
-  33%      { --mx:90%;--my:50%; }
-  66%      { --mx:50%;--my:80%; }
+  transition:opacity .3s ease;
 }
 
 .tabbar-depth {
@@ -1500,37 +1483,30 @@ body.shaking { animation: screenShake .4s ease; }
 }
 
 /* ============================================================
-   ANDROID GLASS FALLBACK
+   NO-BACKDROP-FILTER FALLBACK
+   Feature-queried instead of user-agent sniffed, so it kicks in
+   reliably on any browser (Android or otherwise) that can't do a
+   real backdrop blur — no JS class, no black glass.
    ============================================================ */
-html.is-android .em-panel,
-html.is-android .donut-tooltip,
-html.is-android .conn-pill,
-html.is-android .glass,
-html.is-android .card-head .tag,
-html.is-android .scope-badge,
-html.is-android .btn,
-html.is-android .slider,
-html.is-android .field input[type=text],
-html.is-android .toast,
-html.is-android .tabbar {
-  backdrop-filter:none !important;
-  -webkit-backdrop-filter:none !important;
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .em-panel, .donut-tooltip, .conn-pill, .glass, .card-head .tag,
+  .scope-badge, .btn, .slider, .field input[type=text], .toast, .tabbar {
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+  }
+  .glass       { background:linear-gradient(172deg,rgba(255,255,255,.92) 0%,rgba(255,255,255,.86) 35%,rgba(255,255,255,.82) 65%,rgba(255,255,255,.86) 85%,rgba(255,255,255,.90) 100%); }
+  .tabbar      { background:linear-gradient(172deg,rgba(255,255,255,.97) 0%,rgba(255,255,255,.93) 100%); }
+  .conn-pill   { background:rgba(20,24,22,.94); }
+  .toast       { background:rgba(16,20,18,.96); }
+  .scope-badge { background:rgba(8,8,10,.72); }
+  .donut-tooltip { background:rgba(16,20,18,.94); }
+  .em-panel    { background:rgba(10,4,4,.94); }
+  .card-head .tag,
+  .field input[type=text] { background:rgba(255,255,255,.94); }
+  .glass-sweep { display:none !important; }
 }
-html.is-android .glass       { background:linear-gradient(172deg,rgba(255,255,255,.92) 0%,rgba(255,255,255,.86) 35%,rgba(255,255,255,.82) 65%,rgba(255,255,255,.86) 85%,rgba(255,255,255,.90) 100%); }
-html.is-android .tabbar      { background:linear-gradient(172deg,rgba(255,255,255,.97) 0%,rgba(255,255,255,.93) 100%); }
-html.is-android .conn-pill   { background:rgba(20,24,22,.94); }
-html.is-android .toast       { background:rgba(16,20,18,.96); }
-html.is-android .scope-badge { background:rgba(8,8,10,.72); }
-html.is-android .donut-tooltip { background:rgba(16,20,18,.94); }
-html.is-android .em-panel    { background:rgba(10,4,4,.94); }
-html.is-android .card-head .tag,
-html.is-android .field input[type=text] { background:rgba(255,255,255,.94); }
 
-html.is-android .glass.idle-sheen::after,
-html.is-android .tabbar::after { animation:none !important; opacity:.30 !important; }
-html.is-android .glass-sweep  { display:none !important; }
-
-.scope { isolation:isolate; contain:layout paint style; transform:translateZ(0); }
+.scope { transform:translateZ(0); }
 </style>
 <base target="_blank">
 </head>
@@ -2166,8 +2142,6 @@ if (hasHover && !prefersReducedMotion) {
       card.style.setProperty('--mx', '50%'); card.style.setProperty('--my', '10%');
     });
   });
-} else {
-  document.querySelectorAll('.glass').forEach(card => card.classList.add('idle-sheen'));
 }
 
 const tabbar = document.getElementById('tabbar');
