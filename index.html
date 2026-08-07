@@ -2677,7 +2677,7 @@ function runBootSequence() {
     document.querySelectorAll('.layout .glass, #tabbar, .conn-pill').forEach(el => el.classList.add('revealed'));
     if (boot) {
       boot.classList.add('boot-out');
-      setTimeout(() => boot.classList.add('boot-gone'), 300);
+      setTimeout(() => boot.classList.add('boot-gone'), 100);
     }
     finishBoot();
     return;
