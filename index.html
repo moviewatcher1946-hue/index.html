@@ -1448,30 +1448,34 @@ body.shaking { animation: screenShake .4s ease; }
 }
 
 /* ============================================================
-   BOOT SEQUENCE — cinematic liquid glass system boot
-   (fog, sweeping light beams, rippling glass sheet — no logo/text)
+   BOOT SEQUENCE — cinematic liquid-glass sphere boot
+   A single ultra-realistic glass sphere floats in darkness,
+   catches sweeping volumetric light, drifts toward the camera
+   while growing, and expands until it becomes a full-screen
+   lens that melts into transparency to reveal the dashboard.
    ============================================================ */
 body.booting { overflow:hidden; height:100vh; }
 
-/* Dashboard starts hidden/blurred beneath the boot screen, then each
-   piece is individually revealed by JS with a staggered spring settle */
+/* Dashboard starts fully hidden beneath the boot screen, then
+   crossfades in as one coordinated reveal once the glass lens
+   has filled the frame and begins dissolving. */
 body.booting .layout .glass,
 body.booting #tabbar,
 body.booting .conn-pill {
   opacity:0;
   filter:blur(14px);
-  transform:translateY(22px) scale(.95);
+  transform:translateY(18px) scale(.96);
   pointer-events:none;
-  transition:opacity .85s cubic-bezier(.22,1,.36,1),
-             filter .85s cubic-bezier(.22,1,.36,1),
-             transform .85s cubic-bezier(.34,1.56,.64,1);
+  transition:opacity 2.4s cubic-bezier(.22,1,.36,1),
+             filter 2.4s cubic-bezier(.22,1,.36,1),
+             transform 1.1s cubic-bezier(.34,1.56,.64,1);
 }
 body.booting .layout .glass.revealed,
 body.booting #tabbar.revealed,
 body.booting .conn-pill.revealed {
   opacity:1; filter:blur(0); transform:translateY(0) scale(1); pointer-events:auto;
 }
-#tabbar.revealed { transition:opacity .85s cubic-bezier(.22,1,.36,1), filter .9s cubic-bezier(.22,1,.36,1), transform .9s cubic-bezier(.16,1,.3,1); }
+#tabbar.revealed { transition:opacity 2.4s cubic-bezier(.22,1,.36,1), filter 2.4s cubic-bezier(.22,1,.36,1), transform 1.1s cubic-bezier(.16,1,.3,1); }
 
 .boot-screen {
   position:fixed; inset:0; z-index:400;
@@ -1480,9 +1484,10 @@ body.booting .conn-pill.revealed {
   filter:blur(0px);
   transition:opacity 2.6s cubic-bezier(.22,1,.36,1), filter 2.6s cubic-bezier(.22,1,.36,1);
 }
-/* Instantly snaps to full blur the moment the glass fills the frame —
+/* Instantly snaps to full blur the moment the lens fills the frame —
    no transition on this step, so the very next class (.boot-out) is
-   what animates the blur back down to 0 while fading to transparent. */
+   what animates the blur back down to 0 while fading to transparent,
+   i.e. the glass melting into the dashboard beneath it. */
 .boot-screen.boot-filled:not(.boot-out) { transition:none; filter:blur(20px); }
 .boot-screen.boot-out { opacity:0; filter:blur(0px); pointer-events:none; }
 .boot-screen.boot-gone { display:none; }
@@ -1490,12 +1495,14 @@ body.booting .conn-pill.revealed {
 /* Element kept for structural/JS-hook continuity only — no visible fog */
 .boot-veil { position:absolute; inset:0; opacity:0; }
 
-/* Soft volumetric light beams — enter once from the upper-left at a
-   fixed ~40deg angle and travel in a single straight pass to the
-   lower-right. No flicker, no direction change, no looping. */
+/* Soft volumetric light beams sweep across the darkness at a fixed
+   ~40deg angle. The first four make one dramatic pass while the
+   sphere is small and approaching; two slower, softer beams then
+   keep drifting gently for the rest of the sequence so light stays
+   present in the scene until the whole boot screen dissolves. */
 .boot-rays { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
 .boot-rays span {
-  position:absolute; top:-70%; left:-70%; width:24vmax; height:190vmax;
+  position:absolute; top:-70%; left:-70%; width:22vmax; height:190vmax;
   background:linear-gradient(180deg, transparent, rgba(220,238,255,.4) 40%, rgba(255,255,255,.8) 50%, rgba(220,238,255,.4) 60%, transparent);
   filter:blur(22px);
   opacity:0;
@@ -1503,20 +1510,35 @@ body.booting .conn-pill.revealed {
   transform:rotate(40deg) translate(-140vmax,-140vmax);
   will-change:transform, opacity;
 }
-.boot-stage.boot-grow .boot-rays span {
-  animation:bootBeamSweep 1.6s cubic-bezier(.3,.05,.2,1) forwards;
+.boot-stage.boot-grow .boot-rays span:nth-child(-n+4) {
+  animation:bootBeamSweep 1.7s cubic-bezier(.3,.05,.2,1) forwards;
 }
 .boot-rays span:nth-child(1){ animation-delay:0s; }
-.boot-rays span:nth-child(2){ animation-delay:.18s; }
-.boot-rays span:nth-child(3){ animation-delay:.36s; }
-.boot-rays span:nth-child(4){ animation-delay:.54s; }
-.boot-rays span:nth-child(5){ display:none; }
-.boot-rays span:nth-child(6){ display:none; }
+.boot-rays span:nth-child(2){ animation-delay:.2s; }
+.boot-rays span:nth-child(3){ animation-delay:.4s; }
+.boot-rays span:nth-child(4){ animation-delay:.6s; }
 @keyframes bootBeamSweep {
   0%   { opacity:0;   transform:rotate(40deg) translate(-140vmax,-140vmax); }
   14%  { opacity:.5; }
-  82%  { opacity:.38; }
+  82%  { opacity:.35; }
   100% { opacity:0;   transform:rotate(40deg) translate(140vmax,140vmax); }
+}
+/* Two slow, soft ambient beams — low-opacity, wide, drifting back and
+   forth — keep the volumetric light alive through the growth and
+   fill stages. They live inside .boot-screen so they fade away
+   naturally with it during the final dissolve. */
+.boot-rays span:nth-child(5), .boot-rays span:nth-child(6) {
+  width:34vmax; filter:blur(30px);
+}
+.boot-stage.boot-grow .boot-rays span:nth-child(5) {
+  animation:bootBeamAmbient 7s ease-in-out 1.9s infinite;
+}
+.boot-stage.boot-grow .boot-rays span:nth-child(6) {
+  animation:bootBeamAmbient 8.5s ease-in-out 3.4s infinite;
+}
+@keyframes bootBeamAmbient {
+  0%,100% { opacity:0;   transform:rotate(40deg) translate(-60vmax,-60vmax); }
+  50%     { opacity:.16; transform:rotate(40deg) translate(60vmax,60vmax); }
 }
 
 /* Element kept for structural/JS-hook continuity only — no visible particles,
@@ -1525,97 +1547,199 @@ body.booting .conn-pill.revealed {
 .boot-particle { position:absolute; opacity:0 !important; }
 @keyframes bootParticleFloat { 0%,100% { opacity:0; } }
 
-/* Full-bleed stage the glass sheet grows across */
+/* Full-bleed stage the single glass sphere lives and grows within */
+/* Full-bleed 3D stage the sphere physically travels through. A real
+   CSS perspective is used (not a flat scale trick) so moving the
+   sphere along Z is an actual simulated camera dolly toward a
+   3D object — apparent size, thickness and magnification all grow
+   as an honest side-effect of shrinking distance, the way a real
+   lens approaching a camera would behave. */
 .boot-stage {
   position:absolute; inset:0;
   display:block;
+  perspective:1400px;
+  perspective-origin:50% 50%;
 }
 
 /* Rotating glass ring loader — removed */
 .boot-ring { display:none; }
 
-/* Liquid glass sheet — a single connected, organically-edged surface
-   (no rectangles/tiles/shards) that grows left-to-right as the light
-   beams pass over it, then scales toward the camera to fill the frame. */
+/* ------------------------------------------------------------
+   THE SPHERE — one element, one shape, throughout the whole
+   sequence, never duplicated or swapped for another shape. It
+   starts almost stationary and small, far back in the 3D scene,
+   then physically travels toward the camera along the Z axis
+   (JS drives translate3d(..., z) every frame under the perspective
+   above — this is a real depth move, not a 2D scale()). Motion is
+   eased so it starts with almost no velocity and gathers momentum,
+   finishing fast, the way a real object being pulled toward a lens
+   would accelerate rather than move at a constant rate. */
 .boot-sphere {
-  position:absolute; left:0; top:0; width:0%; height:100%;
-  border-radius:0 40% 44% 0/0 58% 42% 0;
-  background:
-    radial-gradient(120% 150% at 12% 30%, rgba(255,255,255,.5), rgba(205,232,255,.16) 42%, rgba(160,205,255,.05) 68%, transparent 100%);
-  backdrop-filter:blur(28px) saturate(190%);
-  -webkit-backdrop-filter:blur(28px) saturate(190%);
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.16),
-    inset -34px 0 70px rgba(2,10,20,.4),
-    inset 18px 0 40px rgba(255,255,255,.14),
-    0 0 90px rgba(140,195,255,.14);
-  overflow:hidden;
-  mask-image:linear-gradient(90deg, black 0%, black 80%, transparent 100%);
-  -webkit-mask-image:linear-gradient(90deg, black 0%, black 80%, transparent 100%);
+  position:absolute; left:50%; top:50%; width:16vmax; height:16vmax;
+  border-radius:50%;
+  transform:translate3d(-50%,-50%,-1250px);
   transform-origin:50% 50%;
-  isolation:isolate;
-  contain:paint;
-  transform:translateZ(0) scale(1);
+  will-change:transform;
+  filter:drop-shadow(0 2vmax 6vmax rgba(140,190,255,.16)) drop-shadow(0 0 3vmax rgba(255,255,255,.10));
 }
-.boot-stage.boot-grow .boot-sphere {
-  animation:bootGlassGrow 1.6s cubic-bezier(.3,.05,.2,1) forwards,
-            bootGlassRipple 5s ease-in-out infinite;
+
+/* Inner glass body — clipped to the circle. Handles the actual
+   optical look: refraction of what's behind it via a fixed-strength
+   backdrop-filter (its blur/saturate amounts are never animated —
+   animating those per frame is what causes the GPU blur-texture
+   re-upload bug noted elsewhere in this file, so instead the SAME
+   fixed lens strength simply samples a physically larger patch of
+   the dashboard as the sphere's true on-screen footprint grows from
+   the Z-move above — real optical magnification from real distance
+   change, not an enlarged texture) plus the sphere's own continuous
+   breathing and micro-ripple. */
+.boot-sphere-inner {
+  position:absolute; inset:0; border-radius:50%;
+  overflow:hidden; isolation:isolate; contain:paint;
+  backdrop-filter:blur(3px) saturate(168%) brightness(1.06) contrast(1.04);
+  -webkit-backdrop-filter:blur(3px) saturate(168%) brightness(1.06) contrast(1.04);
+  background:
+    radial-gradient(115% 130% at 30% 26%, rgba(255,255,255,.42) 0%, rgba(255,255,255,.14) 16%, rgba(210,232,255,.05) 34%, rgba(10,20,35,.02) 58%, rgba(4,10,20,.16) 84%, rgba(2,6,14,.30) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.30),
+    inset -3.2vmin -2.2vmin 6vmin rgba(255,120,130,.09),
+    inset 3.2vmin 2.2vmin 6vmin rgba(120,175,255,.13),
+    inset 0 0 5vmin rgba(255,255,255,.10),
+    inset 0 -3vmin 5vmin rgba(0,10,25,.22);
+  animation:bootBreathe 4.6s ease-in-out infinite, bootRippleShape 7.5s ease-in-out infinite;
+  will-change:transform, border-radius;
 }
-@keyframes bootGlassGrow {
-  0%   { width:0%; }
-  100% { width:92%; }
+@keyframes bootBreathe {
+  0%,100% { transform:scale(1); }
+  50%     { transform:scale(1.022); }
 }
-/* Gentle organic ripple of the glass sheet's leading edge */
-@keyframes bootGlassRipple {
-  0%,100% { border-radius:0 40% 44% 0/0 58% 42% 0; }
-  33%     { border-radius:0 46% 36% 0/0 40% 60% 0; }
-  66%     { border-radius:0 34% 50% 0/0 62% 38% 0; }
+@keyframes bootRippleShape {
+  0%,100% { border-radius:50%; }
+  25%     { border-radius:52% 48% 47% 53%/48% 52% 46% 54%; }
+  50%     { border-radius:47% 53% 52% 48%/53% 47% 54% 46%; }
+  75%     { border-radius:53% 47% 48% 52%/46% 54% 47% 53%; }
 }
-/* Moving internal reflection sweeping across the glass */
-.boot-sphere::before {
-  content:""; position:absolute; inset:-20%;
-  background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.45) 48%, rgba(210,235,255,.16) 55%, transparent 70%);
-  animation:bootSphereSheen 3.4s ease-in-out infinite;
+
+/* Internal reflection sweeping across the glass. Nested in its own
+   wrapper so JS can continuously re-aim it (rotate/translate — GPU-
+   safe transform only) as the simulated camera distance changes,
+   giving the impression the reflection is shifting with perspective
+   as the object turns toward the viewer, independent of the sheen's
+   own perpetual sweep underneath it. */
+.boot-sphere-refraction-wrap {
+  position:absolute; inset:-25%;
+  will-change:transform;
+}
+.boot-sphere-refraction {
+  position:absolute; inset:0;
+  background:linear-gradient(115deg, transparent 32%, rgba(255,255,255,.4) 49%, rgba(215,235,255,.14) 56%, transparent 72%);
+  mix-blend-mode:screen;
+  animation:bootSphereSheen 4.2s ease-in-out infinite;
   will-change:transform;
   backface-visibility:hidden;-webkit-backface-visibility:hidden;
 }
 @keyframes bootSphereSheen {
-  0%   { transform:translateZ(0) translateX(-60%) translateY(-10%) rotate(0deg); }
-  50%  { transform:translateZ(0) translateX(20%) translateY(10%) rotate(4deg); }
-  100% { transform:translateZ(0) translateX(-60%) translateY(-10%) rotate(0deg); }
+  0%   { transform:translateZ(0) translateX(-55%) translateY(-8%) rotate(0deg); }
+  50%  { transform:translateZ(0) translateX(18%) translateY(8%) rotate(3deg); }
+  100% { transform:translateZ(0) translateX(-55%) translateY(-8%) rotate(0deg); }
 }
-/* Refracted caustic shimmer across the glass surface */
-.boot-sphere::after {
-  content:""; position:absolute; inset:0; border-radius:inherit;
-  background:conic-gradient(from 90deg at 50% 50%, rgba(120,180,255,.14), rgba(200,240,255,.18), rgba(140,205,225,.12), rgba(120,180,255,.14));
+
+/* Soft rotating caustics — faint refracted light patterns drifting
+   inside the glass. Base opacity is raised continuously by JS as the
+   sphere nears the camera, so refraction visibly intensifies with
+   proximity (opacity is compositor-only and safe to touch every
+   frame — the underlying backdrop-filter strength itself is never
+   touched). */
+.boot-sphere-caustic {
+  position:absolute; inset:0; border-radius:inherit;
+  background:conic-gradient(from 90deg at 46% 46%, rgba(120,180,255,.12), rgba(200,240,255,.16), rgba(140,205,225,.10), rgba(120,180,255,.12));
   mix-blend-mode:screen;
-  animation:bootCausticSpin 6s linear infinite;
-  opacity:.75;
-  will-change:transform;
+  opacity:.35;
+  animation:bootCausticSpin 9s linear infinite;
+  will-change:transform, opacity;
   backface-visibility:hidden;-webkit-backface-visibility:hidden;
 }
 @keyframes bootCausticSpin { to { transform:translateZ(0) rotate(360deg); } }
 
+/* Fresnel edge — a thin bright rim with a faint chromatic split,
+   always present at low strength. */
+.boot-sphere-fresnel {
+  position:absolute; inset:0; border-radius:50%;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,.4),
+    inset -0.9vmin 0 2.4vmin rgba(255,110,120,.10),
+    inset 0.9vmin 0 2.4vmin rgba(120,170,255,.13),
+    inset 0 0 4.5vmin rgba(255,255,255,.08);
+  mix-blend-mode:screen;
+  pointer-events:none;
+}
+/* A second, stronger rim with deeper chromatic separation and a
+   heavier inner shadow — its box-shadow values are fixed (never
+   animated), but JS fades its opacity in as the sphere approaches,
+   so the glass reads as physically thicker and more strongly
+   refractive the closer it gets, without ever re-painting a
+   changing box-shadow. */
+.boot-sphere-fresnel-deep {
+  position:absolute; inset:0; border-radius:50%;
+  opacity:0;
+  box-shadow:
+    inset 0 0 0 2.5px rgba(255,255,255,.5),
+    inset -2.6vmin 0 6vmin rgba(255,90,110,.16),
+    inset 2.6vmin 0 6vmin rgba(90,160,255,.20),
+    inset 0 0 9vmin rgba(255,255,255,.14),
+    inset 0 -2.4vmin 7vmin rgba(0,10,25,.28);
+  mix-blend-mode:screen;
+  pointer-events:none;
+  will-change:opacity;
+}
+
+/* Small specular hot-spot, like a bright window reflection caught on
+   the curved surface. Wrapped so JS can slowly orbit it around the
+   rim (rotate only) as the approach progresses — a Fresnel highlight
+   physically moves around the edge of a lens as the viewing angle to
+   it changes, rather than sitting fixed in one corner throughout. */
+.boot-sphere-highlight-wrap {
+  position:absolute; inset:0;
+  will-change:transform;
+}
+.boot-sphere-highlight {
+  position:absolute; width:34%; height:22%; left:20%; top:16%;
+  border-radius:50%;
+  background:radial-gradient(closest-side, rgba(255,255,255,.75), rgba(255,255,255,.18) 55%, transparent 80%);
+  filter:blur(1.5vmin);
+  mix-blend-mode:screen;
+  opacity:.85;
+  animation:bootHighlightPulse 4.6s ease-in-out infinite;
+}
+@keyframes bootHighlightPulse {
+  0%,100% { opacity:.7; }
+  50%     { opacity:.95; }
+}
+
+/* Soft outer glow — a plain, non-backdrop-filter layer whose opacity
+   JS raises as the sphere nears, standing in for the light spilling
+   and caustic pooling a real thick lens throws off as it draws
+   closer to a light source/camera. */
+.boot-sphere-glow {
+  position:absolute; inset:-30%; border-radius:50%;
+  background:radial-gradient(circle, rgba(190,220,255,.22) 0%, rgba(190,220,255,.08) 45%, transparent 72%);
+  opacity:.12;
+  pointer-events:none;
+  will-change:opacity;
+}
+
 /* Boot logo — empty div kept for JS hook only; never shown (no branding) */
 .boot-logo { position:relative; z-index:2; width:0; height:0; opacity:0; }
-
-/* Glass moves toward the camera: smooth 100% -> 350% scale over 0.8s,
-   gentle acceleration, no shake/flash/rotation/distortion. */
-.boot-stage.boot-morph .boot-sphere {
-  animation:bootGlassToCamera .8s cubic-bezier(.3,.02,.28,1) forwards,
-            bootGlassRipple 5s ease-in-out infinite;
-}
-@keyframes bootGlassToCamera {
-  0%   { transform:translateZ(0) scale(1); }
-  100% { transform:translateZ(0) scale(3.5); }
-}
 
 /* Droplet element kept for JS timing/reveal continuity only — never
    rendered (no particles/shards are used in this animation). */
 .boot-droplet { position:fixed; opacity:0 !important; pointer-events:none; }
 
 @media (prefers-reduced-motion:reduce) {
-  .boot-stage, .boot-sphere, .boot-sphere::before, .boot-sphere::after, .boot-ring, .boot-particle, .boot-rays span, .boot-veil { animation:none !important; }
+  .boot-stage, .boot-sphere, .boot-sphere-inner, .boot-sphere-refraction,
+  .boot-sphere-refraction-wrap, .boot-sphere-caustic, .boot-sphere-fresnel,
+  .boot-sphere-fresnel-deep, .boot-sphere-highlight, .boot-sphere-highlight-wrap,
+  .boot-ring, .boot-particle, .boot-rays span, .boot-veil { animation:none !important; }
   .boot-screen { transition-duration:.25s; }
 }
 </style>
@@ -1633,6 +1757,18 @@ body.booting .conn-pill.revealed {
   <div class="boot-particles" id="bootParticles"></div>
   <div class="boot-stage" id="bootStage">
     <div class="boot-sphere" id="bootSphere">
+      <div class="boot-sphere-glow"></div>
+      <div class="boot-sphere-inner">
+        <div class="boot-sphere-refraction-wrap" id="bootRefractionWrap">
+          <span class="boot-sphere-refraction"></span>
+        </div>
+        <span class="boot-sphere-caustic" id="bootCaustic"></span>
+        <div class="boot-sphere-highlight-wrap" id="bootHighlightWrap">
+          <span class="boot-sphere-highlight"></span>
+        </div>
+      </div>
+      <div class="boot-sphere-fresnel"></div>
+      <div class="boot-sphere-fresnel-deep" id="bootFresnelDeep"></div>
       <div class="boot-logo" id="bootLogo"></div>
     </div>
   </div>
@@ -3175,9 +3311,14 @@ function revealElement(el, delay) {
 }
 
 function runBootSequence() {
-  const boot   = document.getElementById('bootScreen');
-  const stage  = document.getElementById('bootStage');
+  const boot  = document.getElementById('bootScreen');
+  const stage = document.getElementById('bootStage');
   const sphere = document.getElementById('bootSphere');
+  const refractionWrap = document.getElementById('bootRefractionWrap');
+  const highlightWrap  = document.getElementById('bootHighlightWrap');
+  const fresnelDeep    = document.getElementById('bootFresnelDeep');
+  const caustic        = document.getElementById('bootCaustic');
+  const glow = sphere ? sphere.querySelector('.boot-sphere-glow') : null;
   spawnBootParticles();
   playBootSound();
 
@@ -3191,79 +3332,111 @@ function runBootSequence() {
     return;
   }
 
-  // 0.5s pure-black pause, then the light beams enter and the glass
-  // sheet grows left-to-right beneath them (~1.6s)
-  setTimeout(() => stage.classList.add('boot-grow'), 500);
+  // The sphere travels through real simulated 3D depth (translateZ
+  // under the stage's CSS perspective) rather than being scaled as a
+  // flat texture. PERSPECTIVE must match .boot-stage's perspective.
+  // Z_START is far behind the camera plane (small, distant); Z_END
+  // sits close to — but safely short of — the perspective distance,
+  // so foreshortening alone drives most of the growth honestly, with
+  // headroom left before the projection would blow up.
+  const PERSPECTIVE = 1400;
+  const Z_START = -1250;
+  const Z_END = 1260;
+  const APPROACH_DURATION = 4100;
 
-  // Once ~90% of the screen is covered, the glass moves toward the
-  // camera (100% -> 350% scale over 0.8s)
-  setTimeout(() => {
-    stage.classList.add('boot-morph');
-    launchDroplets();
-  }, 2100);
-
-  // As the glass reaches the camera and fills the frame: snap to full
-  // blur, then crossfade (blur 20px -> 0px, opacity 1 -> 0) to reveal
-  // the dashboard beneath. Plays exactly once — no looping.
-  setTimeout(() => {
+  // Once the lens has physically arrived and fills the frame: snap to
+  // full blur, then crossfade (blur 20px -> 0px, opacity 1 -> 0) so
+  // the glass melts into transparency while the dashboard beneath it
+  // fades in. Plays exactly once — no looping.
+  function finishApproach() {
     boot.classList.add('boot-filled');
     requestAnimationFrame(() => requestAnimationFrame(() => {
       boot.classList.add('boot-out');
+      revealDashboard();
       setTimeout(() => { boot.classList.add('boot-gone'); document.body.classList.remove('booting'); }, 2700);
     }));
-  }, 2900);
+  }
+
+  // Single continuous rAF-driven approach — no discrete animation
+  // phases to hitch or pop between. An ease-in cubic curve (p = t^3)
+  // gives the sphere almost no velocity at the start and builds
+  // continuously to a fast finish, like something with real mass
+  // being pulled toward the camera. The same progress value (p) also
+  // drives every optical layer below, so the glass's refraction,
+  // reflections and apparent thickness evolve in lockstep with the
+  // actual simulated distance rather than on their own timers.
+  function stepApproach(startTime, now) {
+    if (startTime === null) startTime = now;
+    const t = Math.min(1, (now - startTime) / APPROACH_DURATION);
+    const p = t * t * t;
+    const z = Z_START + (Z_END - Z_START) * p;
+
+    if (sphere) sphere.style.transform = `translate3d(-50%, -50%, ${z.toFixed(1)}px)`;
+
+    // Reflection shifts across the glass as the perspective angle
+    // to it changes (transform-only — safe to update every frame).
+    if (refractionWrap) {
+      refractionWrap.style.transform =
+        `rotate(${(p * 26).toFixed(2)}deg) translate(${(p * 6).toFixed(2)}%, ${(p * -4).toFixed(2)}%)`;
+    }
+    // The Fresnel highlight slowly orbits the rim rather than sitting
+    // fixed in one corner, as it would on an approaching real lens.
+    if (highlightWrap) highlightWrap.style.transform = `rotate(${(p * 68).toFixed(2)}deg)`;
+
+    // Apparent thickness / refraction strength: crossfade in the
+    // deeper rim and boost the caustic and glow opacity — all
+    // opacity-only, never touching the backdrop-filter's own blur
+    // strength, so no GPU blur-texture re-upload is triggered.
+    if (fresnelDeep) fresnelDeep.style.opacity = p.toFixed(3);
+    if (caustic)      caustic.style.opacity = (0.35 + p * 0.5).toFixed(3);
+    if (glow)          glow.style.opacity = (0.12 + p * 0.55).toFixed(3);
+
+    if (t < 1) {
+      requestAnimationFrame((n) => stepApproach(startTime, n));
+    } else {
+      finishApproach();
+    }
+  }
+
+  // 0.5s in complete darkness with the single sphere floating and
+  // breathing, then the light beams begin their sweep as the sphere
+  // starts its physical journey toward the camera.
+  setTimeout(() => {
+    stage.classList.add('boot-grow');
+    requestAnimationFrame((n) => stepApproach(null, n));
+  }, 500);
 }
 
-function launchDroplets() {
-  const sphere = document.getElementById('bootSphere');
-  const rect = sphere.getBoundingClientRect();
-  const originX = rect.left + rect.width / 2;
-  const originY = rect.top + rect.height / 2;
-
-  // Widgets in reveal order: cards top-to-bottom through the layout
+function revealDashboard() {
+  // The dashboard has been sitting behind the sphere the whole time;
+  // it now crossfades in as one coordinated reveal beneath the
+  // dissolving glass lens, with a light stagger so each card settles
+  // in with its own soft spring rather than popping in at once.
   const targets = Array.from(document.querySelectorAll('.layout .glass'));
   const tabbar = document.getElementById('tabbar');
   const connPill = document.querySelector('.conn-pill');
 
-  let maxArrival = 0;
+  let maxDelay = 0;
 
   targets.forEach((el, i) => {
-    const delay = i * 70;
-    const tRect = el.getBoundingClientRect();
-    const targetX = tRect.left + tRect.width / 2;
-    const targetY = tRect.top + Math.min(tRect.height / 2, 60);
-    const duration = 620 + Math.random() * 260;
-    maxArrival = Math.max(maxArrival, delay + duration);
-
+    const delay = i * 45;
+    maxDelay = Math.max(maxDelay, delay);
     setTimeout(() => {
-      const drop = document.createElement('div');
-      drop.className = 'boot-droplet';
-      document.body.appendChild(drop);
-      const anim = drop.animate([
-        { transform: `translate(${originX}px, ${originY}px) scale(1)`, opacity: 1 },
-        { transform: `translate(${(originX+targetX)/2 + (Math.random()*40-20)}px, ${(originY+targetY)/2 - 30}px) scale(1.15)`, opacity: 1, offset: .55 },
-        { transform: `translate(${targetX}px, ${targetY}px) scale(.3)`, opacity: 0 }
-      ], { duration, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'forwards' });
-
-      anim.onfinish = () => {
-        drop.remove();
-        el.classList.add('revealed');
+      el.classList.add('revealed');
+      setTimeout(() => {
         if (el.classList.contains('glass')) sweepCard(el);
-        if (el.id === 'card-livefeed') { const s = document.getElementById('mainScope'); if (s) animateScopeShimmer(s); }
-      };
+        if (el.id === 'card-livefeed') {
+          const s = document.getElementById('mainScope');
+          if (s) animateScopeShimmer(s);
+        }
+      }, 260);
     }, delay);
   });
 
-  // Tab bar slides up while refracting the background
-  setTimeout(() => tabbar && tabbar.classList.add('revealed'), 120);
-  // Connection badge settles in and begins its gentle pulse
-  setTimeout(() => connPill && connPill.classList.add('revealed'), 200);
+  setTimeout(() => tabbar && tabbar.classList.add('revealed'), 40);
+  setTimeout(() => connPill && connPill.classList.add('revealed'), 90);
 
-  // Fade out the boot screen once droplets have landed
-  // (crossfade timing is now driven by the glass-to-camera sequence above)
-
-  // Analytics animates in after the other widgets have appeared
-  setTimeout(finishBoot, maxArrival + 300);
+  setTimeout(finishBoot, maxDelay + 2500);
 }
 
 let bootFinished = false;
