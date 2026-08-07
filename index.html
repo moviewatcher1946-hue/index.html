@@ -1448,7 +1448,8 @@ body.shaking { animation: screenShake .4s ease; }
 }
 
 /* ============================================================
-   BOOT SEQUENCE — visionOS-style liquid glass startup
+   BOOT SEQUENCE — cinematic liquid glass system boot
+   (fog, sweeping light beams, rippling glass sheet — no logo/text)
    ============================================================ */
 body.booting { overflow:hidden; height:100vh; }
 
@@ -1474,115 +1475,106 @@ body.booting .conn-pill.revealed {
 
 .boot-screen {
   position:fixed; inset:0; z-index:400;
-  display:flex; align-items:center; justify-content:center;
   overflow:hidden;
-  background:
-    radial-gradient(120% 100% at 50% 8%, rgba(255,255,255,.5), transparent 55%),
-    linear-gradient(215deg, #eaf8f0 0%, #d6ede6 18%, #c2e3d8 36%, #b5d9cc 52%, #c8e8bc 70%, #d8f0c8 85%, #edfae2 100%);
-  backdrop-filter:blur(38px) saturate(160%);
-  -webkit-backdrop-filter:blur(38px) saturate(160%);
-  transition:opacity .7s cubic-bezier(.22,1,.36,1), filter .7s cubic-bezier(.22,1,.36,1);
+  background:#000000;
+  filter:blur(0px);
+  transition:opacity 2.6s cubic-bezier(.22,1,.36,1), filter 2.6s cubic-bezier(.22,1,.36,1);
 }
-.boot-screen.boot-out { opacity:0; filter:blur(6px); pointer-events:none; }
+/* Instantly snaps to full blur the moment the glass fills the frame —
+   no transition on this step, so the very next class (.boot-out) is
+   what animates the blur back down to 0 while fading to transparent. */
+.boot-screen.boot-filled:not(.boot-out) { transition:none; filter:blur(20px); }
+.boot-screen.boot-out { opacity:0; filter:blur(0px); pointer-events:none; }
 .boot-screen.boot-gone { display:none; }
 
-/* Soft ambient blur veil that slowly clears as init proceeds */
-.boot-veil {
-  position:absolute; inset:0;
-  backdrop-filter:blur(46px); -webkit-backdrop-filter:blur(46px);
-  background:rgba(255,255,255,.02);
-  transition:backdrop-filter 1.4s ease, -webkit-backdrop-filter 1.4s ease;
-}
-.boot-screen.boot-clearing .boot-veil { backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+/* Element kept for structural/JS-hook continuity only — no visible fog */
+.boot-veil { position:absolute; inset:0; opacity:0; }
 
-/* Light rays behind the sphere */
-.boot-rays { position:absolute; inset:0; pointer-events:none; }
+/* Soft volumetric light beams — enter once from the upper-left at a
+   fixed ~40deg angle and travel in a single straight pass to the
+   lower-right. No flicker, no direction change, no looping. */
+.boot-rays { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
 .boot-rays span {
-  position:absolute; top:50%; left:50%; width:2px; height:46vmax;
-  background:linear-gradient(180deg, transparent, rgba(255,255,255,.5) 40%, rgba(255,255,255,.5) 60%, transparent);
-  transform-origin:top center;
-  filter:blur(6px);
+  position:absolute; top:-70%; left:-70%; width:24vmax; height:190vmax;
+  background:linear-gradient(180deg, transparent, rgba(220,238,255,.4) 40%, rgba(255,255,255,.8) 50%, rgba(220,238,255,.4) 60%, transparent);
+  filter:blur(22px);
   opacity:0;
-  animation:bootRayFade 3.6s ease-in-out infinite;
+  mix-blend-mode:screen;
+  transform:rotate(40deg) translate(-140vmax,-140vmax);
+  will-change:transform, opacity;
 }
-.boot-rays span:nth-child(1){ transform:translate(-50%,0) rotate(8deg); animation-delay:.1s; }
-.boot-rays span:nth-child(2){ transform:translate(-50%,0) rotate(-22deg); animation-delay:.6s; }
-.boot-rays span:nth-child(3){ transform:translate(-50%,0) rotate(48deg); animation-delay:1.1s; }
-.boot-rays span:nth-child(4){ transform:translate(-50%,0) rotate(-58deg); animation-delay:1.6s; }
-.boot-rays span:nth-child(5){ transform:translate(-50%,0) rotate(112deg); animation-delay:.35s; }
-.boot-rays span:nth-child(6){ transform:translate(-50%,0) rotate(-100deg); animation-delay:1.9s; }
-@keyframes bootRayFade {
-  0%,100% { opacity:0; }
-  50%      { opacity:.22; }
+.boot-stage.boot-grow .boot-rays span {
+  animation:bootBeamSweep 1.6s cubic-bezier(.3,.05,.2,1) forwards;
+}
+.boot-rays span:nth-child(1){ animation-delay:0s; }
+.boot-rays span:nth-child(2){ animation-delay:.18s; }
+.boot-rays span:nth-child(3){ animation-delay:.36s; }
+.boot-rays span:nth-child(4){ animation-delay:.54s; }
+.boot-rays span:nth-child(5){ display:none; }
+.boot-rays span:nth-child(6){ display:none; }
+@keyframes bootBeamSweep {
+  0%   { opacity:0;   transform:rotate(40deg) translate(-140vmax,-140vmax); }
+  14%  { opacity:.5; }
+  82%  { opacity:.38; }
+  100% { opacity:0;   transform:rotate(40deg) translate(140vmax,140vmax); }
 }
 
-/* Floating glass particles */
+/* Element kept for structural/JS-hook continuity only — no visible particles,
+   shards, or geometric shapes are used to build the animation. */
 .boot-particles { position:absolute; inset:0; pointer-events:none; }
-.boot-particle {
-  position:absolute; border-radius:50%;
-  background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.95), rgba(255,255,255,.25) 60%, transparent 75%);
-  box-shadow:0 0 6px rgba(255,255,255,.6);
-  opacity:0;
-  animation:bootParticleFloat var(--pd,7s) ease-in-out var(--pdelay,0s) infinite;
-}
-@keyframes bootParticleFloat {
-  0%   { opacity:0; transform:translate(0,10px) scale(.6); }
-  15%  { opacity:var(--pop,.55); }
-  50%  { opacity:var(--pop,.55); transform:translate(var(--px,10px),var(--py,-16px)) scale(1); }
-  85%  { opacity:var(--pop,.55); }
-  100% { opacity:0; transform:translate(var(--px2,-6px),var(--py2,-30px)) scale(.7); }
-}
+.boot-particle { position:absolute; opacity:0 !important; }
+@keyframes bootParticleFloat { 0%,100% { opacity:0; } }
 
-/* Central stage holding sphere + ring */
+/* Full-bleed stage the glass sheet grows across */
 .boot-stage {
-  position:relative; width:220px; height:220px;
-  display:flex; align-items:center; justify-content:center;
-  animation:bootBreathe 3.2s ease-in-out infinite;
-}
-@keyframes bootBreathe {
-  0%,100% { transform:scale(1); }
-  50%      { transform:scale(1.035); }
+  position:absolute; inset:0;
+  display:block;
 }
 
 /* Rotating glass ring loader — removed */
 .boot-ring { display:none; }
 
-/* Glass sphere */
+/* Liquid glass sheet — a single connected, organically-edged surface
+   (no rectangles/tiles/shards) that grows left-to-right as the light
+   beams pass over it, then scales toward the camera to fill the frame. */
 .boot-sphere {
-  position:relative; width:132px; height:132px; border-radius:50%;
+  position:absolute; left:0; top:0; width:0%; height:100%;
+  border-radius:0 40% 44% 0/0 58% 42% 0;
   background:
-    radial-gradient(circle at 32% 26%, rgba(255,255,255,.95), rgba(255,255,255,.35) 38%, rgba(255,255,255,.10) 60%, rgba(255,255,255,.35) 100%);
-  backdrop-filter:blur(18px) saturate(200%);
-  -webkit-backdrop-filter:blur(18px) saturate(200%);
+    radial-gradient(120% 150% at 12% 30%, rgba(255,255,255,.5), rgba(205,232,255,.16) 42%, rgba(160,205,255,.05) 68%, transparent 100%);
+  backdrop-filter:blur(28px) saturate(190%);
+  -webkit-backdrop-filter:blur(28px) saturate(190%);
   box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.75),
-    inset -14px -14px 30px rgba(20,60,45,.10),
-    inset 14px 10px 24px rgba(255,255,255,.55),
-    0 20px 50px rgba(20,60,30,.16),
-    0 4px 14px rgba(20,60,30,.10);
+    inset 0 0 0 1px rgba(255,255,255,.16),
+    inset -34px 0 70px rgba(2,10,20,.4),
+    inset 18px 0 40px rgba(255,255,255,.14),
+    0 0 90px rgba(140,195,255,.14);
   overflow:hidden;
-  transition:transform 1.1s cubic-bezier(.65,0,.35,1), border-radius 1.1s cubic-bezier(.65,0,.35,1), opacity .6s ease .4s, filter .9s ease;
-  /* Mobile compositing fix (added): the ::before reflection below is
-     intentionally oversized (inset:-20%) and animates its own transform
-     inside this backdrop-filter + overflow:hidden + border-radius:50%
-     sphere, which then also scales and reshapes its border-radius during
-     the boot-morph dissolve. On iOS Safari / Chrome Android that combo
-     can let the backdrop-filter's blur buffer briefly render as an
-     unclipped rectangle instead of following the circular/blob clip.
-     isolation + contain:paint make this element a hard clip/compositing
-     boundary, the mask-image forces Safari to honor the clip on a
-     backdrop-filter element, and keeping it pre-promoted (translateZ(0))
-     avoids a layer promotion glitch when the morph animation starts.
-     Purely a compositing fix — the visible reflection/morph is unchanged. */
+  mask-image:linear-gradient(90deg, black 0%, black 80%, transparent 100%);
+  -webkit-mask-image:linear-gradient(90deg, black 0%, black 80%, transparent 100%);
+  transform-origin:50% 50%;
   isolation:isolate;
   contain:paint;
-  -webkit-mask-image:-webkit-radial-gradient(white,black);
-  transform:translateZ(0);
+  transform:translateZ(0) scale(1);
 }
-/* Moving internal reflection sweeping across the sphere */
+.boot-stage.boot-grow .boot-sphere {
+  animation:bootGlassGrow 1.6s cubic-bezier(.3,.05,.2,1) forwards,
+            bootGlassRipple 5s ease-in-out infinite;
+}
+@keyframes bootGlassGrow {
+  0%   { width:0%; }
+  100% { width:92%; }
+}
+/* Gentle organic ripple of the glass sheet's leading edge */
+@keyframes bootGlassRipple {
+  0%,100% { border-radius:0 40% 44% 0/0 58% 42% 0; }
+  33%     { border-radius:0 46% 36% 0/0 40% 60% 0; }
+  66%     { border-radius:0 34% 50% 0/0 62% 38% 0; }
+}
+/* Moving internal reflection sweeping across the glass */
 .boot-sphere::before {
   content:""; position:absolute; inset:-20%;
-  background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.55) 48%, rgba(255,255,255,.15) 55%, transparent 70%);
+  background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.45) 48%, rgba(210,235,255,.16) 55%, transparent 70%);
   animation:bootSphereSheen 3.4s ease-in-out infinite;
   will-change:transform;
   backface-visibility:hidden;-webkit-backface-visibility:hidden;
@@ -1592,61 +1584,38 @@ body.booting .conn-pill.revealed {
   50%  { transform:translateZ(0) translateX(20%) translateY(10%) rotate(4deg); }
   100% { transform:translateZ(0) translateX(-60%) translateY(-10%) rotate(0deg); }
 }
-/* Refracted background caustic swirl */
+/* Refracted caustic shimmer across the glass surface */
 .boot-sphere::after {
-  content:""; position:absolute; inset:0; border-radius:50%;
-  background:conic-gradient(from 90deg at 50% 50%, rgba(61,141,122,.18), rgba(179,216,168,.22), rgba(163,209,198,.16), rgba(61,141,122,.18));
-  mix-blend-mode:soft-light;
+  content:""; position:absolute; inset:0; border-radius:inherit;
+  background:conic-gradient(from 90deg at 50% 50%, rgba(120,180,255,.14), rgba(200,240,255,.18), rgba(140,205,225,.12), rgba(120,180,255,.14));
+  mix-blend-mode:screen;
   animation:bootCausticSpin 6s linear infinite;
-  opacity:.85;
+  opacity:.75;
   will-change:transform;
   backface-visibility:hidden;-webkit-backface-visibility:hidden;
 }
 @keyframes bootCausticSpin { to { transform:translateZ(0) rotate(360deg); } }
 
-/* Boot logo — empty div kept for JS .boot-logo-in class hook only */
-.boot-logo {
-  position:relative; z-index:2;
-  width:0; height:0;
-  opacity:0;
-  transition:opacity 1.3s cubic-bezier(.22,1,.36,1) .35s;
-}
-.boot-stage.boot-logo-in .boot-logo { opacity:1; }
+/* Boot logo — empty div kept for JS hook only; never shown (no branding) */
+.boot-logo { position:relative; z-index:2; width:0; height:0; opacity:0; }
 
-
-
-
-
-/* Sphere → liquid morph → droplet dissolve, triggered when init completes */
-.boot-stage.boot-morph .boot-ring { opacity:0; transition:opacity .3s ease; }
+/* Glass moves toward the camera: smooth 100% -> 350% scale over 0.8s,
+   gentle acceleration, no shake/flash/rotation/distortion. */
 .boot-stage.boot-morph .boot-sphere {
-  animation:bootMorph .9s cubic-bezier(.65,0,.35,1) forwards;
+  animation:bootGlassToCamera .8s cubic-bezier(.3,.02,.28,1) forwards,
+            bootGlassRipple 5s ease-in-out infinite;
 }
-.boot-stage.boot-morph .boot-logo {
-  transition:opacity .5s ease, filter .5s ease, transform .5s ease;
-  opacity:0; transform:scale(1.3);
-}
-@keyframes bootMorph {
-  0%   { transform:translateZ(0) scale(1); border-radius:50%; }
-  35%  { transform:translateZ(0) scale(1.28,1.12); border-radius:44% 56% 52% 48%/50% 46% 54% 50%; }
-  65%  { transform:translateZ(0) scale(1.5,1.65); border-radius:60% 40% 44% 56%/56% 60% 40% 44%; opacity:.7; }
-  100% { transform:translateZ(0) scale(2.4); border-radius:50%; opacity:0; }
+@keyframes bootGlassToCamera {
+  0%   { transform:translateZ(0) scale(1); }
+  100% { transform:translateZ(0) scale(3.5); }
 }
 
-/* Individual droplets flying out toward widget positions */
-.boot-droplet {
-  position:fixed; z-index:401; left:0; top:0;
-  width:14px; height:14px; border-radius:50%;
-  background:radial-gradient(circle at 32% 28%, rgba(255,255,255,.98), rgba(255,255,255,.5) 45%, rgba(179,216,168,.35) 75%, transparent 100%);
-  box-shadow:0 0 10px rgba(255,255,255,.7), 0 0 2px rgba(61,141,122,.4);
-  pointer-events:none;
-  will-change:transform, opacity;
-  /* Droplets hidden — JS timing/reveal logic runs unchanged */
-  opacity:0 !important;
-}
+/* Droplet element kept for JS timing/reveal continuity only — never
+   rendered (no particles/shards are used in this animation). */
+.boot-droplet { position:fixed; opacity:0 !important; pointer-events:none; }
 
 @media (prefers-reduced-motion:reduce) {
-  .boot-stage, .boot-sphere::before, .boot-sphere::after, .boot-ring, .boot-particle, .boot-rays span { animation:none !important; }
+  .boot-stage, .boot-sphere, .boot-sphere::before, .boot-sphere::after, .boot-ring, .boot-particle, .boot-rays span, .boot-veil { animation:none !important; }
   .boot-screen { transition-duration:.25s; }
 }
 </style>
@@ -1654,7 +1623,7 @@ body.booting .conn-pill.revealed {
 <body class="booting">
 
 <!-- ============================================================
-     BOOT SEQUENCE — visionOS-style liquid glass startup
+     BOOT SEQUENCE — cinematic liquid glass system boot
      ============================================================ -->
 <div class="boot-screen" id="bootScreen">
   <div class="boot-veil"></div>
@@ -3083,6 +3052,96 @@ toggleEmergency.addEventListener('change', saveSettings);
 loadSettings();
 
 /* ============================================================
+   BOOT SOUND — original synthesized cinematic startup audio
+   (ambient drone + airy chimes + whoosh + bass swell), generated
+   entirely with the Web Audio API. Purely additive: does not
+   touch any existing boot timing/reveal logic. Fails silently if
+   the browser blocks autoplay before a user gesture.
+   ============================================================ */
+function playBootSound() {
+  if (prefersReducedMotion) return;
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const master = ctx.createGain();
+    master.gain.value = 0.0001;
+    master.connect(ctx.destination);
+    master.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.6);
+
+    // Ambient drone bed
+    const droneGain = ctx.createGain();
+    droneGain.gain.value = 0.18;
+    droneGain.connect(master);
+    [55, 55.6, 110].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = i === 1 ? 'sine' : 'triangle';
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      g.gain.value = i === 2 ? 0.35 : 0.6;
+      osc.connect(g); g.connect(droneGain);
+      osc.start(); osc.stop(ctx.currentTime + 5.8);
+    });
+
+    // Airy whooshes following the light beams (beams run ~0.5s-2.1s,
+    // staggered starts matching the CSS beam delays)
+    const bufSize = ctx.sampleRate * 1.3;
+    [0.5, 0.68, 0.86, 1.04].forEach((startAt) => {
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.Q.value = 0.8;
+      const t0 = ctx.currentTime + startAt;
+      bp.frequency.setValueAtTime(500, t0);
+      bp.frequency.linearRampToValueAtTime(2600, t0 + 0.7);
+      bp.frequency.linearRampToValueAtTime(700, t0 + 1.3);
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.0001, t0);
+      noiseGain.gain.linearRampToValueAtTime(0.08, t0 + 0.35);
+      noiseGain.gain.linearRampToValueAtTime(0.0001, t0 + 1.3);
+      noise.connect(bp); bp.connect(noiseGain); noiseGain.connect(master);
+      noise.start(t0);
+    });
+
+    // Delicate glass resonance as the liquid spreads (0.5s - 2.1s)
+    const chimeFreqs = [1318.5, 1760, 2217, 2637, 3136];
+    chimeFreqs.forEach((freq, i) => {
+      const t = ctx.currentTime + 0.55 + i * 0.32;
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.075, t + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+      osc.connect(g); g.connect(master);
+      osc.start(t); osc.stop(t + 1.2);
+    });
+
+    // Deep cinematic bass swell as the glass reaches the camera (~2.9s)
+    const swellT = ctx.currentTime + 2.1;
+    const bass = ctx.createOscillator();
+    bass.type = 'sine';
+    bass.frequency.value = 36;
+    const bassGain = ctx.createGain();
+    bassGain.gain.setValueAtTime(0.0001, swellT);
+    bassGain.gain.linearRampToValueAtTime(0.6, swellT + 0.75);
+    bassGain.gain.exponentialRampToValueAtTime(0.0001, swellT + 2.3);
+    bass.connect(bassGain); bassGain.connect(master);
+    bass.start(swellT); bass.stop(swellT + 2.4);
+
+    // Overall fade-out as the dashboard is revealed — plays once, no loop
+    master.gain.setValueAtTime(0.5, ctx.currentTime + 3.4);
+    master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 5.6);
+    setTimeout(() => { try { ctx.close(); } catch (e) {} }, 6000);
+  } catch (e) { /* Autoplay blocked or unsupported — fail silently */ }
+}
+
+/* ============================================================
    BOOT SEQUENCE ORCHESTRATION
    ============================================================ */
 function spawnBootParticles() {
@@ -3120,6 +3179,7 @@ function runBootSequence() {
   const stage  = document.getElementById('bootStage');
   const sphere = document.getElementById('bootSphere');
   spawnBootParticles();
+  playBootSound();
 
   // Reduced motion: skip the full show, reveal quickly and cleanly
   if (prefersReducedMotion) {
@@ -3131,16 +3191,27 @@ function runBootSequence() {
     return;
   }
 
-  // Logo materializes from inside the glass
-  requestAnimationFrame(() => setTimeout(() => stage.classList.add('boot-logo-in'), 260));
-  // Screen slowly clears as "initialization" proceeds
-  setTimeout(() => boot.classList.add('boot-clearing'), 500);
+  // 0.5s pure-black pause, then the light beams enter and the glass
+  // sheet grows left-to-right beneath them (~1.6s)
+  setTimeout(() => stage.classList.add('boot-grow'), 500);
 
-  // Once init completes: sphere morphs into liquid and dissolves into droplets
+  // Once ~90% of the screen is covered, the glass moves toward the
+  // camera (100% -> 350% scale over 0.8s)
   setTimeout(() => {
     stage.classList.add('boot-morph');
     launchDroplets();
-  }, 1900);
+  }, 2100);
+
+  // As the glass reaches the camera and fills the frame: snap to full
+  // blur, then crossfade (blur 20px -> 0px, opacity 1 -> 0) to reveal
+  // the dashboard beneath. Plays exactly once — no looping.
+  setTimeout(() => {
+    boot.classList.add('boot-filled');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      boot.classList.add('boot-out');
+      setTimeout(() => { boot.classList.add('boot-gone'); document.body.classList.remove('booting'); }, 2700);
+    }));
+  }, 2900);
 }
 
 function launchDroplets() {
@@ -3189,11 +3260,7 @@ function launchDroplets() {
   setTimeout(() => connPill && connPill.classList.add('revealed'), 200);
 
   // Fade out the boot screen once droplets have landed
-  setTimeout(() => {
-    const boot = document.getElementById('bootScreen');
-    boot.classList.add('boot-out');
-    setTimeout(() => { boot.classList.add('boot-gone'); document.body.classList.remove('booting'); }, 750);
-  }, maxArrival + 120);
+  // (crossfade timing is now driven by the glass-to-camera sequence above)
 
   // Analytics animates in after the other widgets have appeared
   setTimeout(finishBoot, maxArrival + 300);
