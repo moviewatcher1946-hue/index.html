@@ -10,6 +10,10 @@
     if (/Android/i.test(navigator.userAgent || '')) {
       document.documentElement.classList.add('is-android');
     }
+    var isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '') || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    if (isMobile) {
+      document.documentElement.classList.add('mobile-boot');
+    }
   } catch (e) {}
 })();
 </script>
@@ -1474,6 +1478,107 @@ body.shaking { animation: screenShake .4s ease; }
   100% { opacity: 1; transform: scale(1); filter: blur(0px); }
 }
 
+/* ============================================================
+   MOBILE LIQUID GLASS — GPU-Lite Variant
+   Preserves the liquid-glass aesthetic while dramatically
+   reducing compositor load on iOS/Android GPUs.
+   ============================================================ */
+
+/* Promote the circle to its own compositor layer once, cheaply */
+.mobile-boot .boot-circle {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  /* Halve the blur radius — still glassy, ~4× cheaper to composite */
+  backdrop-filter: blur(10px) saturate(1.25);
+  -webkit-backdrop-filter: blur(10px) saturate(1.25);
+  /* Simpler background: remove nested radial gradients, keep sheen */
+  background:
+    radial-gradient(ellipse 85% 55% at 50% 5%, rgba(255,255,255,0.28) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 100%);
+  background-color: rgba(255, 255, 255, 0.05);
+  /* Thinner, cheaper border */
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  /* Single soft shadow instead of multi-layer inset + drop */
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,0.30),
+    0 10px 30px rgba(0,0,0,0.25);
+}
+
+/* Refraction ring: keep it, but slower and much softer */
+.mobile-boot .boot-circle::before {
+  filter: blur(3px);
+  opacity: 0.35;
+  animation-duration: 14s;          /* was 6s */
+  background: conic-gradient(
+    from 0deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.12) 15%,
+    rgba(255,255,255,0) 35%,
+    rgba(255,255,255,0.06) 50%,
+    rgba(255,255,255,0) 70%,
+    rgba(255,255,255,0.14) 85%,
+    rgba(255,255,255,0) 100%
+  );
+}
+
+/* Caustic highlight: static, no animation */
+.mobile-boot .boot-circle::after {
+  opacity: 0.40;
+  filter: blur(2px);
+  animation: none;
+}
+
+/* Chromatic aberration: keep the effect but much subtler */
+.mobile-boot .boot-chromatic {
+  filter: drop-shadow(-1px 0 0.5px rgba(255, 60, 90, 0.12)) drop-shadow(1px 0 0.5px rgba(0, 210, 230, 0.12));
+  animation: bootChromaPulseMobile 3.5s ease-in-out infinite;
+}
+@keyframes bootChromaPulseMobile {
+  0%, 100% { filter: drop-shadow(-1px 0 0.5px rgba(255,60,90,0.08)) drop-shadow(1px 0 0.5px rgba(0,210,230,0.08)); }
+  50%      { filter: drop-shadow(-1.5px 0 0.5px rgba(255,60,90,0.16)) drop-shadow(1.5px 0 0.5px rgba(0,210,230,0.16)); }
+}
+
+/* Light sweeps: single sweep, normal blend, lower opacity */
+.mobile-boot .boot-sweep {
+  mix-blend-mode: normal;
+  opacity: 0.35;
+  animation: bootSweep 1.6s cubic-bezier(.4, 0, .2, 1) 1.4s forwards;
+}
+.mobile-boot .boot-sweep-2 {
+  display: none;  /* Remove second sweep entirely on mobile */
+}
+
+/* Shimmer: slower, normal blend, reduced opacity */
+.mobile-boot .boot-shimmer {
+  mix-blend-mode: normal;
+  opacity: 0.18;
+  animation-duration: 5s;
+}
+
+/* Grain: static, very subtle */
+.mobile-boot .boot-grain {
+  opacity: 0.04;
+  animation: none;
+}
+
+/* Entrance animation: shorten distance to reduce paint */
+@keyframes bootCircleInMobile {
+  0%   { opacity: 0; transform: scale(0.75) translateZ(0); filter: blur(8px); }
+  100% { opacity: 1; transform: scale(1) translateZ(0);   filter: blur(0px); }
+}
+.mobile-boot .boot-circle {
+  animation: bootCircleInMobile 1.0s cubic-bezier(.22,1,.36,1) 0.3s forwards;
+}
+
+/* Exit animation: lighter blur */
+@keyframes bootCircleOutMobile {
+  0%   { opacity: 1; transform: scale(1) translateZ(0);   filter: blur(0px); }
+  100% { opacity: 0; transform: scale(0.88) translateZ(0); filter: blur(6px); }
+}
+.mobile-boot .boot-circle.boot-fade-out {
+  animation: bootCircleOutMobile 1.0s cubic-bezier(.65, 0, .35, 1) 0s forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .boot-circle, .boot-sweep, .boot-sweep-2, .boot-shimmer, .boot-chromatic {
     animation: none !important;
@@ -1508,6 +1613,7 @@ body.shaking { animation: screenShake .4s ease; }
 
 .scope { transform:translateZ(0); }
 </style>
+<base target="_blank">
 <base target="_blank">
 </head>
 <body class="booting">
