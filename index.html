@@ -618,12 +618,6 @@ body.shaking { animation: screenShake .4s ease; }
   position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:3;
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.22),inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(255,255,255,.10),inset 1px 0 rgba(255,255,255,.18),inset -1px 0 rgba(255,255,255,.12);
 }
-.glass-ca {
-  position:absolute;inset:-1px;border-radius:calc(28px + 1px);pointer-events:none;z-index:4;
-  box-shadow:0 0 0 0.5px rgba(255,80,60,.05),0 0 0 1px rgba(80,140,255,.03);mix-blend-mode:screen;
-  opacity:.8;transition:opacity .3s ease;
-}
-.glass:hover .glass-ca { opacity:1; }
 
 @media (hover:hover) { .glass:hover { box-shadow:var(--shadow-card-hover); } }
 
@@ -1582,43 +1576,19 @@ body.booting .conn-pill {
   opacity: 1;
 }
 
-/* ── CA burst on card / UI element reveal ────────────────────
-   JS adds .ca-burst on each element as it rises in, then
-   switches to .ca-burst-fade to melt the channels back clean. */
-.glass.ca-burst,
-.tabbar.ca-burst,
-.conn-pill.ca-burst {
-  filter:
-    drop-shadow(-5px 0 3px rgba(255, 30, 70, 0.55))
-    drop-shadow( 5px 0 3px rgba(0, 220, 255, 0.55)) !important;
-  transition: filter 0.08s ease !important;
-}
-.glass.ca-burst-fade,
-.tabbar.ca-burst-fade,
-.conn-pill.ca-burst-fade {
-  filter:
-    drop-shadow(-5px 0 3px rgba(255, 30, 70, 0))
-    drop-shadow( 5px 0 3px rgba(0, 220, 255, 0)) !important;
-  transition: filter 0.60s cubic-bezier(.22,1,.36,1) !important;
-}
 
-/* ── Boot screen exit: scale + chromatic split ───────────────
-   .boot-screen gets .boot-out-ca first (spikes the CA filter),
-   then .boot-out half a frame later to begin the fade.        */
+/* ── Boot screen exit: soft fade + scale, no chromatic split ── */
 .boot-screen {
   transform-origin: center center;
   transition:
-    opacity 1.05s cubic-bezier(.22,1,.36,1),
-    transform 1.05s cubic-bezier(.22,1,.36,1),
-    filter 1.05s cubic-bezier(.22,1,.36,1);
+    opacity 0.8s cubic-bezier(.22,1,.36,1),
+    transform 0.8s cubic-bezier(.22,1,.36,1),
+    filter 0.8s cubic-bezier(.22,1,.36,1);
 }
 .boot-screen.boot-out {
   opacity: 0;
-  transform: scale(1.05);
-  filter:
-    blur(5px)
-    drop-shadow(-18px 0 6px rgba(255, 20, 60, 0.60))
-    drop-shadow( 18px 0 6px rgba(0,  210, 255, 0.60));
+  transform: scale(1.04);
+  filter: blur(6px);
   pointer-events: none;
 }
 .boot-screen.boot-gone { display: none; }
@@ -1706,7 +1676,7 @@ body.booting .conn-pill {
   <!-- LEFT SIDE PANEL -->
   <aside class="side" id="sideLeftPanel">
     <div class="glass">
-      <div class="glass-edge"></div><div class="glass-ca"></div>
+      <div class="glass-edge"></div>
       <div class="side-brand">
         <div class="mark">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s7 7.5 7 12a7 7 0 0 1-14 0c0-4.5 7-12 7-12z"/></svg>
@@ -1719,7 +1689,7 @@ body.booting .conn-pill {
     </div>
 
     <div class="glass analytics-card" id="analyticsCard">
-      <div class="glass-edge"></div><div class="glass-ca"></div>
+      <div class="glass-edge"></div>
       <div class="card-head">
         <h2 style="font-size:15px;">Analytics</h2>
         <div class="tag" id="analyticsTag">Live</div>
@@ -1804,7 +1774,7 @@ body.booting .conn-pill {
     <!-- HOME -->
     <div class="view active" id="view-home">
       <div class="glass" id="card-livefeed">
-        <div class="glass-edge"></div><div class="glass-ca"></div>
+        <div class="glass-edge"></div>
         <div class="card-head">
           <h2>Live Feed</h2>
           <div class="tag" id="liveFeedTag">CAM 01</div>
@@ -1845,7 +1815,7 @@ body.booting .conn-pill {
       </div>
 
       <div class="glass" id="card-detection">
-        <div class="glass-edge"></div><div class="glass-ca"></div>
+        <div class="glass-edge"></div>
         <div class="card-head">
           <h2>Detection Status</h2>
           <div class="tag" id="lastUpdateTag">No data yet</div>
@@ -1874,7 +1844,7 @@ body.booting .conn-pill {
     <!-- CAMERA -->
     <div class="view" id="view-camera">
       <div class="glass">
-        <div class="glass-edge"></div><div class="glass-ca"></div>
+        <div class="glass-edge"></div>
         <div class="card-head">
           <h2>Camera</h2>
           <div class="tag">CAM 01</div>
@@ -1926,7 +1896,7 @@ body.booting .conn-pill {
     <!-- ALERTS -->
     <div class="view" id="view-alerts">
       <div class="glass">
-        <div class="glass-edge"></div><div class="glass-ca"></div>
+        <div class="glass-edge"></div>
         <div class="card-head"><h2>Notifications</h2></div>
         <div class="row">
           <div><div class="t-label">Alert notifications</div><div class="t-desc">Show a banner when Flask reports an event</div></div>
@@ -1950,7 +1920,7 @@ body.booting .conn-pill {
     <!-- HISTORY -->
     <div class="view" id="view-history">
       <div class="glass">
-        <div class="glass-edge"></div><div class="glass-ca"></div>
+        <div class="glass-edge"></div>
         <div class="card-head">
           <h2>Event History</h2>
           <div class="tag" id="historyCount">0 events</div>
@@ -1967,7 +1937,7 @@ body.booting .conn-pill {
     <!-- SETTINGS -->
     <div class="view" id="view-settings">
       <div class="glass">
-        <div class="glass-edge"></div><div class="glass-ca"></div>
+        <div class="glass-edge"></div>
         <div class="card-head"><h2>Flask Connection</h2></div>
         <div class="field">
           <label>Events endpoint</label>
@@ -1987,7 +1957,7 @@ body.booting .conn-pill {
         </div>
       </div>
       <div class="glass">
-        <div class="glass-edge"></div><div class="glass-ca"></div>
+        <div class="glass-edge"></div>
         <div class="card-head"><h2>Polling</h2></div>
         <div class="row">
           <div><div class="t-label">Status</div><div class="t-desc" id="pollStatusDesc">Not connected yet</div></div>
@@ -1999,7 +1969,7 @@ body.booting .conn-pill {
   <!-- RIGHT SIDE PANEL -->
   <aside class="side" id="sideRightPanel">
     <div class="glass" id="sideQuickGlance">
-      <div class="glass-edge"></div><div class="glass-ca"></div>
+      <div class="glass-edge"></div>
       <div class="card-head"><h2 style="font-size:15px;">Quick Glance</h2></div>
       <div class="quick-row">
         <div class="k">Connection</div>
@@ -2015,7 +1985,7 @@ body.booting .conn-pill {
       </div>
     </div>
     <div class="glass" id="sideRecentCard">
-      <div class="glass-edge"></div><div class="glass-ca"></div>
+      <div class="glass-edge"></div>
       <div class="card-head"><h2 style="font-size:15px;">Recent Events</h2></div>
       <div class="mini-hlist" id="sideHistoryList">
         <div class="mini-empty">Nothing yet — events will show up here.</div>
@@ -2711,7 +2681,14 @@ async function pollEvents() {
           timestamp: e.timestamp || new Date().toISOString(), recorded: true
         }));
         renderHistory();
-        if (events.length > 0) { const latest = events[0]; updateStatusChip(latest.type, latest.confidence, latest.timestamp); }
+        /* Restore every category's status chip to its own latest
+           reading — not just whichever category happened to have
+           the single most-recent event overall. */
+        if (events.length > 0) {
+          const latestByType = {};
+          events.forEach(e => { if (!(e.type in latestByType)) latestByType[e.type] = e; });
+          Object.values(latestByType).forEach(e => updateStatusChip(e.type, e.confidence, e.timestamp));
+        }
       }
       firstPoll = false; return;
     }
@@ -2864,20 +2841,18 @@ function runBootSequence() {
     if (circle) circle.classList.add('boot-fade-out');
   }, 3000);
 
-  /* ── Boot exit: chromatic split on the whole screen, then wipe ──
-     3200ms — apply boot-out (CA split + scale + fade on boot screen)
-     3200ms — simultaneously fire revealDashboard (wipe + card rises)
-     The wipe and the boot CA split overlap: the wipe *tears* the
-     boot screen open while its channels are flying apart.           */
+  /* ── Boot exit: circle fades, screen dissolves, dashboard rises ──
+     3200ms — boot screen begins its fade+scale-out
+     3200ms — dashboard cards start rising in underneath it        */
   setTimeout(() => {
     /* Remove booting so card transitions are unlocked */
     document.body.classList.remove('booting');
-    /* Boot screen: CA split + scale-up fade */
+    /* Boot screen: soft fade + scale out */
     if (boot) {
       boot.classList.add('boot-out');
-      setTimeout(() => boot.classList.add('boot-gone'), 1100);
+      setTimeout(() => boot.classList.add('boot-gone'), 850);
     }
-    /* Dashboard wipe + card CA bursts fire at the same moment */
+    /* Dashboard reveal fires as the boot screen dissolves */
     revealDashboard();
   }, 3200);
 }
@@ -2891,21 +2866,6 @@ function revealDashboard() {
   const rays     = document.querySelector('.light-rays');
   const bokeh    = document.querySelector('.bokeh-layer');
 
-  /* ── Helper: chromatic burst on an element ── */
-  function caBurst(el, delay) {
-    setTimeout(() => {
-      el.classList.remove('ca-burst', 'ca-burst-fade');
-      void el.offsetWidth; /* reflow */
-      el.classList.add('ca-burst');
-      /* Short hold, then melt to clean */
-      setTimeout(() => {
-        el.classList.remove('ca-burst');
-        el.classList.add('ca-burst-fade');
-        setTimeout(() => el.classList.remove('ca-burst-fade'), 600);
-      }, 90);
-    }, delay);
-  }
-
   /* Ambient layers */
   if (rays)  rays.classList.add('revealed');
   if (bokeh) bokeh.classList.add('revealed');
@@ -2918,31 +2878,21 @@ function revealDashboard() {
 
   /* Connection pill */
   setTimeout(() => {
-    if (connPill) {
-      connPill.classList.add('revealed');
-      caBurst(connPill, 60);
-    }
+    if (connPill) connPill.classList.add('revealed');
   }, 120);
 
   /* Tabbar */
   setTimeout(() => {
-    if (tb) {
-      tb.classList.add('revealed');
-      caBurst(tb, 60);
-    }
+    if (tb) tb.classList.add('revealed');
   }, 160);
 
-  /* Glass cards — stagger in, each gets a CA burst as it lands */
+  /* Glass cards — stagger in */
   let maxDelay = 0;
   targets.forEach((el, i) => {
     const delay = 60 + i * 55;
     maxDelay = Math.max(maxDelay, delay);
     setTimeout(() => {
       el.classList.add('revealed');
-      /* CA burst fires ~80ms after the card starts rising —
-         right as the leading edge of its motion peaks */
-      caBurst(el, 80);
-      /* Glass-sweep shimmer follows the CA fade */
       setTimeout(() => {
         sweepCard(el);
         if (el.id === 'card-livefeed') {
