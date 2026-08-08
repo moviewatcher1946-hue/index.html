@@ -1341,10 +1341,8 @@ body.shaking { animation: screenShake .4s ease; }
   background: #000;
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
-  transition: opacity 1.2s cubic-bezier(.22,1,.36,1);
+  /* transition handled by boot→dashboard block below */
 }
-.boot-screen.boot-out { opacity: 0; pointer-events: none; }
-.boot-screen.boot-gone { display: none; }
 
 /* Grain */
 .boot-grain {
@@ -1555,11 +1553,192 @@ body.shaking { animation: screenShake .4s ease; }
 }
 
 .scope { transform:translateZ(0); }
+
+/* ============================================================
+   BOOT → DASHBOARD TRANSITION
+   ============================================================ */
+
+/* Dashboard starts fully hidden while booting */
+body.booting .layout,
+body.booting .topbar,
+body.booting .tabbar,
+body.booting .conn-pill,
+body.booting .light-rays,
+body.booting .bokeh-layer {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Glass cards: start hidden below, blur out */
+body.booting .glass {
+  opacity: 0;
+  transform: translateY(28px) scale(0.96);
+  filter: blur(8px);
+  will-change: opacity, transform, filter;
+}
+
+/* Tabbar starts from below */
+body.booting .tabbar {
+  transform: translateX(-50%) translateY(32px);
+}
+body.booting .conn-pill {
+  transform: translateY(-12px);
+}
+
+/* --- POST-BOOT TRANSITIONS --- */
+
+.layout, .topbar {
+  transition: opacity 0.6s cubic-bezier(.22,1,.36,1);
+}
+.light-rays, .bokeh-layer {
+  transition: opacity 1.2s ease;
+}
+
+/* Glass cards animate up — filter left open for CA burst */
+.glass {
+  transition:
+    opacity 0.55s cubic-bezier(.22,1,.36,1),
+    transform 0.65s cubic-bezier(.22,1,.36,1),
+    filter 0.55s cubic-bezier(.22,1,.36,1),
+    box-shadow .45s cubic-bezier(.25,.46,.45,.94);
+}
+
+.tabbar {
+  transition:
+    opacity 0.55s cubic-bezier(.22,1,.36,1),
+    transform 0.65s cubic-bezier(.22,1,.36,1);
+}
+
+.conn-pill {
+  transition:
+    opacity 0.5s cubic-bezier(.22,1,.36,1),
+    transform 0.6s cubic-bezier(.22,1,.36,1),
+    box-shadow .3s ease,
+    color .3s ease,
+    background .3s ease;
+}
+
+/* Revealed state */
+.glass.revealed {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+.tabbar.revealed {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.conn-pill.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+.layout.revealed,
+.topbar.revealed {
+  opacity: 1;
+}
+.light-rays.revealed,
+.bokeh-layer.revealed {
+  opacity: 1;
+}
+
+/* ── CA burst on card / UI element reveal ────────────────────
+   JS adds .ca-burst on each element as it rises in, then
+   switches to .ca-burst-fade to melt the channels back clean. */
+.glass.ca-burst,
+.tabbar.ca-burst,
+.conn-pill.ca-burst {
+  filter:
+    drop-shadow(-5px 0 3px rgba(255, 30, 70, 0.55))
+    drop-shadow( 5px 0 3px rgba(0, 220, 255, 0.55)) !important;
+  transition: filter 0.08s ease !important;
+}
+.glass.ca-burst-fade,
+.tabbar.ca-burst-fade,
+.conn-pill.ca-burst-fade {
+  filter:
+    drop-shadow(-5px 0 3px rgba(255, 30, 70, 0))
+    drop-shadow( 5px 0 3px rgba(0, 220, 255, 0)) !important;
+  transition: filter 0.60s cubic-bezier(.22,1,.36,1) !important;
+}
+
+/* ── Boot screen exit: scale + chromatic split ───────────────
+   .boot-screen gets .boot-out-ca first (spikes the CA filter),
+   then .boot-out half a frame later to begin the fade.        */
+.boot-screen {
+  transform-origin: center center;
+  transition:
+    opacity 1.05s cubic-bezier(.22,1,.36,1),
+    transform 1.05s cubic-bezier(.22,1,.36,1),
+    filter 1.05s cubic-bezier(.22,1,.36,1);
+}
+.boot-screen.boot-out {
+  opacity: 0;
+  transform: scale(1.05);
+  filter:
+    blur(5px)
+    drop-shadow(-18px 0 6px rgba(255, 20, 60, 0.60))
+    drop-shadow( 18px 0 6px rgba(0,  210, 255, 0.60));
+  pointer-events: none;
+}
+.boot-screen.boot-gone { display: none; }
+
+/* ── Full-viewport wipe overlay ──────────────────────────────
+   A fixed pseudo-element that sweeps left→right as the
+   dashboard reveals, carrying a chromatic edge at its front.  */
+#bootWipe {
+  position: fixed; inset: 0; z-index: 390;
+  pointer-events: none;
+  /* The wipe is a white sheen with a hard chromatic leading edge */
+  background: linear-gradient(
+    100deg,
+    transparent            0%,
+    rgba(0, 220, 255, 0.18) 44%,
+    rgba(255,255,255, 0.55) 47%,
+    rgba(255, 30,  70, 0.18) 50%,
+    transparent            54%
+  );
+  transform: translateX(-110%);
+  opacity: 0;
+}
+@keyframes bootWipeSweep {
+  0%   { transform: translateX(-110%); opacity: 1; }
+  100% { transform: translateX( 110%); opacity: 1; }
+}
+#bootWipe.wiping {
+  animation: bootWipeSweep 0.72s cubic-bezier(.42,0,.18,1) forwards;
+}
+
+/* Secondary softer wipe — trails the first by 80ms */
+#bootWipe2 {
+  position: fixed; inset: 0; z-index: 389;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent              0%,
+    rgba(0, 220, 255, 0.07) 40%,
+    rgba(255,255,255, 0.22) 47%,
+    rgba(255, 30,  70, 0.07) 52%,
+    transparent              58%
+  );
+  transform: translateX(-110%);
+  opacity: 0;
+}
+@keyframes bootWipe2Sweep {
+  0%   { transform: translateX(-110%); opacity: 1; }
+  100% { transform: translateX( 110%); opacity: 0.4; }
+}
+#bootWipe2.wiping {
+  animation: bootWipe2Sweep 0.88s cubic-bezier(.42,0,.28,1) 0.08s forwards;
+}
 </style>
 <base target="_blank">
 <base target="_blank">
 </head>
 <body class="booting">
+
+<!-- Chromatic wipe overlays — fired during boot→dashboard transition -->
+<div id="bootWipe"></div>
+<div id="bootWipe2"></div>
 
 <div class="boot-screen" id="bootScreen">
   <div class="boot-grain"></div>
@@ -2764,11 +2943,25 @@ function runBootSequence() {
 
   if (prefersReducedMotion) {
     document.body.classList.remove('booting');
+    /* Instantly reveal everything */
+    document.querySelectorAll('.layout .glass').forEach(el => el.classList.add('revealed'));
+    const _tb = document.getElementById('tabbar');
+    const _cp = document.querySelector('.conn-pill');
+    const _lay = document.querySelector('.layout');
+    const _top = document.querySelector('.topbar');
+    const _rays = document.querySelector('.light-rays');
+    const _bokeh = document.querySelector('.bokeh-layer');
+    if (_lay)  _lay.classList.add('revealed');
+    if (_top)  _top.classList.add('revealed');
+    if (_rays) _rays.classList.add('revealed');
+    if (_bokeh) _bokeh.classList.add('revealed');
+    if (_tb)   _tb.classList.add('revealed');
+    if (_cp)   _cp.classList.add('revealed');
     if (boot) {
       boot.style.transition = 'opacity .3s ease';
       boot.style.opacity = '0';
       boot.style.pointerEvents = 'none';
-      setTimeout(() => { boot.remove(); document.body.classList.remove('booting'); }, 300);
+      setTimeout(() => { boot.remove(); }, 300);
     }
     finishBoot();
     return;
@@ -2783,44 +2976,112 @@ function runBootSequence() {
     }
   }, 2500);
 
-  /* After sweep completes (~3.0s), fade the circle */
+  /* Fade the circle out */
   setTimeout(() => {
     if (circle) circle.classList.add('boot-fade-out');
   }, 3000);
 
-  /* Fade the whole boot screen away */
+  /* ── Boot exit: chromatic split on the whole screen, then wipe ──
+     3200ms — apply boot-out (CA split + scale + fade on boot screen)
+     3200ms — simultaneously fire revealDashboard (wipe + card rises)
+     The wipe and the boot CA split overlap: the wipe *tears* the
+     boot screen open while its channels are flying apart.           */
   setTimeout(() => {
+    /* Remove booting so card transitions are unlocked */
+    document.body.classList.remove('booting');
+    /* Boot screen: CA split + scale-up fade */
     if (boot) {
       boot.classList.add('boot-out');
-      setTimeout(() => {
-        boot.classList.add('boot-gone');
-        document.body.classList.remove('booting');
-      }, 1200);
+      setTimeout(() => boot.classList.add('boot-gone'), 1100);
     }
-  }, 3800);
-
-  /* Reveal dashboard underneath */
-  setTimeout(() => revealDashboard(), 3400);
+    /* Dashboard wipe + card CA bursts fire at the same moment */
+    revealDashboard();
+  }, 3200);
 }
 
 function revealDashboard() {
-  const targets = Array.from(document.querySelectorAll('.layout .glass'));
-  const tb = document.getElementById('tabbar');
+  const targets  = Array.from(document.querySelectorAll('.layout .glass'));
+  const tb       = document.getElementById('tabbar');
   const connPill = document.querySelector('.conn-pill');
+  const layout   = document.querySelector('.layout');
+  const topbar   = document.querySelector('.topbar');
+  const rays     = document.querySelector('.light-rays');
+  const bokeh    = document.querySelector('.bokeh-layer');
+  const wipe     = document.getElementById('bootWipe');
+  const wipe2    = document.getElementById('bootWipe2');
+
+  /* ── Fire the viewport wipe immediately ── */
+  if (wipe)  { wipe.classList.add('wiping'); }
+  if (wipe2) { wipe2.classList.add('wiping'); }
+  /* Clean up wipe elements after they've crossed */
+  setTimeout(() => {
+    if (wipe)  { wipe.remove(); }
+    if (wipe2) { wipe2.remove(); }
+  }, 1200);
+
+  /* ── Helper: chromatic burst on an element ── */
+  function caBurst(el, delay) {
+    setTimeout(() => {
+      el.classList.remove('ca-burst', 'ca-burst-fade');
+      void el.offsetWidth; /* reflow */
+      el.classList.add('ca-burst');
+      /* Short hold, then melt to clean */
+      setTimeout(() => {
+        el.classList.remove('ca-burst');
+        el.classList.add('ca-burst-fade');
+        setTimeout(() => el.classList.remove('ca-burst-fade'), 600);
+      }, 90);
+    }, delay);
+  }
+
+  /* Ambient layers */
+  if (rays)  rays.classList.add('revealed');
+  if (bokeh) bokeh.classList.add('revealed');
+
+  /* Layout / topbar */
+  setTimeout(() => {
+    if (layout) layout.classList.add('revealed');
+    if (topbar) topbar.classList.add('revealed');
+  }, 80);
+
+  /* Connection pill */
+  setTimeout(() => {
+    if (connPill) {
+      connPill.classList.add('revealed');
+      caBurst(connPill, 60);
+    }
+  }, 120);
+
+  /* Tabbar */
+  setTimeout(() => {
+    if (tb) {
+      tb.classList.add('revealed');
+      caBurst(tb, 60);
+    }
+  }, 160);
+
+  /* Glass cards — stagger in, each gets a CA burst as it lands */
   let maxDelay = 0;
   targets.forEach((el, i) => {
-    const delay = i * 45; maxDelay = Math.max(maxDelay, delay);
+    const delay = 60 + i * 55;
+    maxDelay = Math.max(maxDelay, delay);
     setTimeout(() => {
       el.classList.add('revealed');
+      /* CA burst fires ~80ms after the card starts rising —
+         right as the leading edge of its motion peaks */
+      caBurst(el, 80);
+      /* Glass-sweep shimmer follows the CA fade */
       setTimeout(() => {
-        if (el.classList.contains('glass')) sweepCard(el);
-        if (el.id === 'card-livefeed') { const s = document.getElementById('mainScope'); if (s) animateScopeShimmer(s); }
-      }, 260);
+        sweepCard(el);
+        if (el.id === 'card-livefeed') {
+          const s = document.getElementById('mainScope');
+          if (s) animateScopeShimmer(s);
+        }
+      }, 320);
     }, delay);
   });
-  setTimeout(() => tb && tb.classList.add('revealed'), 40);
-  setTimeout(() => connPill && connPill.classList.add('revealed'), 90);
-  setTimeout(finishBoot, maxDelay + 800);
+
+  setTimeout(finishBoot, maxDelay + 700);
 }
 
 function finishBoot() {
