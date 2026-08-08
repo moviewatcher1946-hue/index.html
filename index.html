@@ -1960,7 +1960,7 @@ body.booting .conn-pill {
         <div class="field">
           <label>Events endpoint</label>
           <input type="text" id="endpointInput" value="https://flask-m2om.onrender.com/events">
-          <div class="hint">Polled every 3 seconds. Expected response: a JSON array of objects like <code>{"id":1,"type":"fire","confidence":82,"timestamp":"2026-08-04T10:22:00"}</code>. Only unseen ids are recorded.</div>
+          <div class="hint">Polled every 3 seconds. Only unseen ids are recorded. Server occationally clears history.</div>
         </div>
         <div class="btn-row">
           <button class="btn" onclick="applyEndpoint()">
