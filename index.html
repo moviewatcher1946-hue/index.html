@@ -1380,6 +1380,10 @@ body.shaking { animation: screenShake .4s ease; }
     0 12px 40px rgba(0,0,0,0.30),
     0 0 0 1px rgba(255,255,255,0.06);
   overflow: hidden;
+  /* iOS Safari can fail to clip transform-animated children with just
+     overflow:hidden + border-radius — force it with clip-path too. */
+  clip-path: circle(50%);
+  -webkit-clip-path: circle(50%);
   opacity: 0; transform: scale(0.6); filter: blur(12px);
   animation: bootCircleIn 1.0s cubic-bezier(.22,1,.36,1) 0.3s forwards;
 }
