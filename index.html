@@ -1479,36 +1479,92 @@ body.shaking { animation: screenShake .4s ease; }
 }
 
 /* ============================================================
-   MOBILE LIQUID GLASS — GPU-Lite Variant
-   Preserves the liquid-glass aesthetic while dramatically
-   reducing compositor load on iOS/Android GPUs.
+   MOBILE TABBAR — GPU-Lite Glass
+   Keeps the frosted aesthetic while eliminating iOS compositor
+   stutter caused by deep shadow stacks + heavy blur.
    ============================================================ */
 
-/* Promote the circle to its own compositor layer once, cheaply */
+.mobile-boot .tabbar {
+  /* Cheaper blur, still visibly frosted */
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+
+  /* Flatten background to fewer stops */
+  background: linear-gradient(180deg, rgba(255,255,255,.88) 0%, rgba(255,255,255,.72) 100%);
+
+  /* Single crisp border instead of 4-directional */
+  border: 1px solid rgba(255,255,255,.70);
+  border-bottom-color: rgba(255,255,255,.35);
+
+  /* Drastically simplified shadow: remove the deepest, most expensive layers */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.90),
+    0 4px 12px rgba(20,60,30,.10),
+    0 12px 32px rgba(20,60,30,.14),
+    0 0 60px rgba(61,141,122,.04);
+
+  /* Promote to compositor once, cheaply */
+  transform: translateX(-50%) translateZ(0);
+}
+
+/* Remove the CPU-heavy spotlight pseudo-element on mobile */
+.mobile-boot .tabbar::after {
+  display: none;
+}
+
+/* Simplify top sheen */
+.mobile-boot .tabbar::before {
+  background: linear-gradient(180deg, rgba(255,255,255,.45), transparent 60%);
+}
+
+/* Depth inset shadows: keep only the essential highlight */
+.mobile-boot .tabbar-depth {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.50),
+    inset 0 -1px 0 rgba(20,60,30,.04);
+}
+
+/* Indicator: cheaper shadow stack, same visual weight */
+.mobile-boot .tab-indicator {
+  background: linear-gradient(155deg, rgba(61,141,122,.30), rgba(61,141,122,.12));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.75),
+    0 2px 6px rgba(61,141,122,.18),
+    0 0 12px rgba(61,141,122,.08);
+}
+.mobile-boot .tab-indicator::before {
+  background: linear-gradient(180deg, rgba(255,255,255,.45), transparent);
+}
+
+/* Tabs: remove hover transforms on touch devices to prevent repaints */
+.mobile-boot .tab:hover svg {
+  transform: none;
+}
+.mobile-boot .tab:active svg {
+  transform: scale(0.92);
+}
+
+/* ============================================================
+   MOBILE BOOT CIRCLE — GPU-Lite Liquid Glass (preserved)
+   ============================================================ */
 .mobile-boot .boot-circle {
   will-change: transform, opacity;
   transform: translateZ(0);
-  /* Halve the blur radius — still glassy, ~4× cheaper to composite */
   backdrop-filter: blur(10px) saturate(1.25);
   -webkit-backdrop-filter: blur(10px) saturate(1.25);
-  /* Simpler background: remove nested radial gradients, keep sheen */
   background:
     radial-gradient(ellipse 85% 55% at 50% 5%, rgba(255,255,255,0.28) 0%, transparent 55%),
     linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 100%);
   background-color: rgba(255, 255, 255, 0.05);
-  /* Thinner, cheaper border */
   border: 1px solid rgba(255, 255, 255, 0.22);
-  /* Single soft shadow instead of multi-layer inset + drop */
   box-shadow:
     inset 0 1px 1px rgba(255,255,255,0.30),
     0 10px 30px rgba(0,0,0,0.25);
 }
-
-/* Refraction ring: keep it, but slower and much softer */
 .mobile-boot .boot-circle::before {
   filter: blur(3px);
   opacity: 0.35;
-  animation-duration: 14s;          /* was 6s */
+  animation-duration: 14s;
   background: conic-gradient(
     from 0deg,
     rgba(255,255,255,0) 0%,
@@ -1520,15 +1576,11 @@ body.shaking { animation: screenShake .4s ease; }
     rgba(255,255,255,0) 100%
   );
 }
-
-/* Caustic highlight: static, no animation */
 .mobile-boot .boot-circle::after {
   opacity: 0.40;
   filter: blur(2px);
   animation: none;
 }
-
-/* Chromatic aberration: keep the effect but much subtler */
 .mobile-boot .boot-chromatic {
   filter: drop-shadow(-1px 0 0.5px rgba(255, 60, 90, 0.12)) drop-shadow(1px 0 0.5px rgba(0, 210, 230, 0.12));
   animation: bootChromaPulseMobile 3.5s ease-in-out infinite;
@@ -1537,31 +1589,22 @@ body.shaking { animation: screenShake .4s ease; }
   0%, 100% { filter: drop-shadow(-1px 0 0.5px rgba(255,60,90,0.08)) drop-shadow(1px 0 0.5px rgba(0,210,230,0.08)); }
   50%      { filter: drop-shadow(-1.5px 0 0.5px rgba(255,60,90,0.16)) drop-shadow(1.5px 0 0.5px rgba(0,210,230,0.16)); }
 }
-
-/* Light sweeps: single sweep, normal blend, lower opacity */
 .mobile-boot .boot-sweep {
   mix-blend-mode: normal;
   opacity: 0.35;
-  animation: bootSweep 1.6s cubic-bezier(.4, 0, .2, 1) 1.4s forwards;
 }
 .mobile-boot .boot-sweep-2 {
-  display: none;  /* Remove second sweep entirely on mobile */
+  display: none;
 }
-
-/* Shimmer: slower, normal blend, reduced opacity */
 .mobile-boot .boot-shimmer {
   mix-blend-mode: normal;
   opacity: 0.18;
   animation-duration: 5s;
 }
-
-/* Grain: static, very subtle */
 .mobile-boot .boot-grain {
   opacity: 0.04;
   animation: none;
 }
-
-/* Entrance animation: shorten distance to reduce paint */
 @keyframes bootCircleInMobile {
   0%   { opacity: 0; transform: scale(0.75) translateZ(0); filter: blur(8px); }
   100% { opacity: 1; transform: scale(1) translateZ(0);   filter: blur(0px); }
@@ -1569,8 +1612,6 @@ body.shaking { animation: screenShake .4s ease; }
 .mobile-boot .boot-circle {
   animation: bootCircleInMobile 1.0s cubic-bezier(.22,1,.36,1) 0.3s forwards;
 }
-
-/* Exit animation: lighter blur */
 @keyframes bootCircleOutMobile {
   0%   { opacity: 1; transform: scale(1) translateZ(0);   filter: blur(0px); }
   100% { opacity: 0; transform: scale(0.88) translateZ(0); filter: blur(6px); }
