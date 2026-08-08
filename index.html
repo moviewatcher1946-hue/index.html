@@ -1417,49 +1417,7 @@ body.shaking { animation: screenShake .4s ease; }
   border-radius: 50%; filter: blur(4px); transform: rotate(-18deg); pointer-events: none;
 }
 
-/* CC Light Sweep */
-.boot-sweep {
-  position: absolute; inset: -50%;
-  background: linear-gradient(
-    105deg,
-    transparent 40%,
-    rgba(255,255,255,0) 42%,
-    rgba(255,255,255,0.35) 48%,
-    rgba(255,255,255,0.55) 50%,
-    rgba(255,255,255,0.35) 52%,
-    rgba(255,255,255,0) 58%,
-    transparent 60%
-  );
-  transform: translateX(-100%) rotate(25deg);
-  animation: bootSweep 1.4s cubic-bezier(.4, 0, .2, 1) 1.4s forwards;
-  pointer-events: none; mix-blend-mode: overlay;
-  /* Force circular clip so it never looks square on mobile */
-  border-radius: 50%;
-}
 
-/* Secondary softer sweep */
-.boot-sweep-2 {
-  position: absolute; inset: -50%;
-  background: linear-gradient(
-    105deg,
-    transparent 45%,
-    rgba(200, 245, 230, 0) 47%,
-    rgba(200, 245, 230, 0.20) 49%,
-    rgba(200, 245, 230, 0.30) 50%,
-    rgba(200, 245, 230, 0.20) 51%,
-    rgba(200, 245, 230, 0) 53%,
-    transparent 55%
-  );
-  transform: translateX(-100%) rotate(25deg);
-  animation: bootSweep 1.6s cubic-bezier(.4, 0, .2, 1) 1.5s forwards;
-  pointer-events: none; mix-blend-mode: screen;
-  /* Force circular clip so it never looks square on mobile */
-  border-radius: 50%;
-}
-@keyframes bootSweep {
-  0%   { transform: translateX(-100%) rotate(25deg); }
-  100% { transform: translateX(100%) rotate(25deg); }
-}
 
 /* Shimmer */
 .boot-shimmer {
@@ -1525,7 +1483,7 @@ body.shaking { animation: screenShake .4s ease; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .boot-circle, .boot-sweep, .boot-sweep-2, .boot-shimmer, .boot-chromatic {
+  .boot-circle, .boot-shimmer, .boot-chromatic {
     animation: none !important;
   }
   .boot-circle { opacity: 1; transform: none; filter: none; }
@@ -1696,8 +1654,6 @@ body.booting .conn-pill {
   <div class="boot-grain"></div>
   <div class="boot-chromatic">
     <div class="boot-circle" id="bootCircle">
-      <div class="boot-sweep"></div>
-      <div class="boot-sweep-2"></div>
       <div class="boot-shimmer"></div>
     </div>
   </div>
