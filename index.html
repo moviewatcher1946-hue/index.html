@@ -1169,7 +1169,16 @@ body.shaking { animation: screenShake .4s ease; }
   position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));
   /* translateX(-50%) centres the bar — this transform must NEVER be
      overridden or animated. The boot sequence fades opacity only. */
-  transform:translateX(-50%);
+  transform:translateX(-50%) translateZ(0);
+  -webkit-transform:translateX(-50%) translateZ(0);
+  /* Promote to its own compositor layer + scope repaint/layout to
+     this element only — lets iOS Safari cache the backdrop-filter
+     blur instead of re-sampling it on every internal repaint (e.g.
+     the tab indicator moving). Purely a rendering hint: no visual
+     or animation behavior changes. */
+  will-change:transform;
+  isolation:isolate;
+  contain:layout style paint;
   z-index:15;
   display:flex;justify-content:center;align-items:center;
   width:max-content;max-width:min(calc(100vw - 24px),calc(100dvw - 24px));
@@ -1522,7 +1531,7 @@ body.booting .glass {
 
 /* Tabbar starts from below */
 body.booting .tabbar {
-  transform: translateX(-50%) translateY(32px);
+  transform: translateX(-50%) translateY(32px) translateZ(0);
 }
 body.booting .conn-pill {
   transform: translateY(-12px);
@@ -1569,7 +1578,7 @@ body.booting .conn-pill {
 }
 .tabbar.revealed {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  transform: translateX(-50%) translateY(0) translateZ(0);
 }
 .conn-pill.revealed {
   opacity: 1;
