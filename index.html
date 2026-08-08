@@ -1,2972 +1,323 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Sentry — Vision Warning System</title>
-<script>
-(function(){
-  try {
-    if (/Android/i.test(navigator.userAgent || '')) {
-      document.documentElement.classList.add('is-android');
-    }
-  } catch (e) {}
-})();
-</script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Sentry — Live Vision</title>
+
 <style>
-/* ============================================================
-   DESIGN TOKENS
-   ============================================================ */
-:root {
-  --accent: #3D8D7A;
-  --accent-2: #316f60;
-  --accent-3: #4aab93;
-  --mint: #B3D8A8;
-  --teal-light: #A3D1C6;
-  --cream: #FBFFE4;
-  --red: #ff3b30;
-  --amber: #ff9f0a;
-  --bg-a: #FBFFE4;
-  --bg-b: #A3D1C6;
-  --text: #1c1c1e;
-  --muted: #6e6e73;
-  --muted-2: #9a9a9e;
-
-  --glass-base: rgba(255,255,255,.42);
-  --glass-mid: rgba(255,255,255,.58);
-  --glass: rgba(255,255,255,.52);
-  --glass-strong: rgba(255,255,255,.68);
-  --glass-border: rgba(255,255,255,.82);
-  --glass-border-bottom: rgba(255,255,255,.35);
-
-  --shadow-card:
-    0 0 0 0.5px rgba(255,255,255,.60),
-    0 1px 0 rgba(255,255,255,.80),
-    0 2px 1px rgba(255,255,255,.45),
-    0 8px 16px rgba(20,60,30,.07),
-    0 20px 40px rgba(20,60,30,.09),
-    0 40px 80px rgba(20,60,30,.06),
-    0 60px 120px rgba(20,60,30,.04);
-
-  --shadow-card-hover:
-    0 0 0 0.5px rgba(255,255,255,.75),
-    0 1px 0 rgba(255,255,255,.90),
-    0 2px 1px rgba(255,255,255,.55),
-    0 12px 24px rgba(20,60,30,.10),
-    0 30px 60px rgba(20,60,30,.12),
-    0 50px 100px rgba(20,60,30,.08),
-    0 70px 140px rgba(20,60,30,.05);
-
-  --shadow-btn:
-    0 1px 0 rgba(255,255,255,.70) inset,
-    0 -1px 0 rgba(0,40,20,.14) inset,
-    0 0 0 0.5px rgba(255,255,255,.50),
-    0 4px 8px rgba(30,80,68,.22),
-    0 8px 24px rgba(30,80,68,.18),
-    0 16px 40px rgba(30,80,68,.10);
-
-  --shadow-btn-ghost:
-    0 1px 0 rgba(255,255,255,.90) inset,
-    0 -1px 0 rgba(0,40,20,.06) inset,
-    0 0 0 0.5px rgba(255,255,255,.65),
-    0 3px 8px rgba(20,60,30,.08),
-    0 8px 20px rgba(20,60,30,.06);
-
-  --hair: rgba(60,60,67,.09);
-  --f: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif;
-  --f-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, sans-serif;
-  --mx: 50%;
-  --my: 10%;
-
-  /* Emergency */
-  --emergency-red: #ff2010;
-  --emergency-glow: rgba(255,32,16,.45);
+* {
+    box-sizing: border-box;
 }
 
-@property --mx { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
-@property --my { syntax: '<percentage>'; inherits: true; initial-value: 10%; }
-@property --tilt-x { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-@property --tilt-y { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-@property --glow-o { syntax: '<number>'; inherits: false; initial-value: 0; }
-
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-
-/* ============================================================
-   BODY & BACKGROUND
-   ============================================================ */
+html,
 body {
-  font-family: var(--f);
-  color: var(--text);
-  min-height: 100vh;
-  overflow-x: hidden;
-  background:
-    linear-gradient(215deg, #eaf8f0 0%, #d6ede6 18%, #c2e3d8 36%, #b5d9cc 52%, #c8e8bc 70%, #d8f0c8 85%, #edfae2 100%);
-  transition: background 1.2s ease;
+    margin: 0;
+    width: 100%;
+    min-height: 100%;
+    background: #0b0f0e;
+    color: #ffffff;
+    font-family: Arial, sans-serif;
 }
 
-body.emergency #emergencyVeil {
-  opacity: 1;
-  pointer-events: none;
+body {
+    display: flex;
+    justify-content: center;
+    padding: 24px;
 }
-#emergencyVeil {
-  position: fixed; inset: 0; z-index: 99;
-  background: radial-gradient(ellipse at 50% 40%, rgba(255,32,16,.22) 0%, rgba(255,32,16,.12) 55%, rgba(255,32,16,.06) 100%);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .6s cubic-bezier(.22,1,.36,1);
-  animation: none;
-}
-body.emergency #emergencyVeil {
-  animation: emergencyBgPulse 1.8s ease-in-out infinite;
-}
-@keyframes emergencyBgPulse {
-  0%,100% { opacity: 1; }
-  50%      { opacity: .45; }
-}
-
-body::before {
-  content: "";
-  position: fixed; inset: 0;
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='0.038'/%3E%3C/svg%3E"),
-    repeating-linear-gradient(7deg, rgba(61,141,122,.055) 0px, rgba(61,141,122,.055) 1px, transparent 1px, transparent 9px),
-    repeating-linear-gradient(-7deg, rgba(61,141,122,.055) 0px, rgba(61,141,122,.055) 1px, transparent 1px, transparent 9px);
-  pointer-events: none; z-index: 0;
-  animation: grainShift 12s steps(4) infinite;
-}
-@keyframes grainShift {
-  0%   { transform: translate3d(0, 0, 0); }
-  25%  { transform: translate3d(-12px, 8px, 0); }
-  50%  { transform: translate3d(8px, -5px, 0); }
-  75%  { transform: translate3d(-5px, 3px, 0); }
-  100% { transform: translate3d(0, 0, 0); }
-}
-
-body::after {
-  content: "";
-  position: fixed; inset: 0;
-  background:
-    radial-gradient(680px 480px at 8% -8%, rgba(61,141,122,.24), transparent 65%),
-    radial-gradient(520px 360px at 96% 12%, rgba(179,216,168,.28), transparent 60%),
-    radial-gradient(420px 300px at 45% 105%, rgba(163,209,198,.18), transparent 70%),
-    radial-gradient(320px 220px at 82% 88%, rgba(251,255,228,.22), transparent 58%),
-    radial-gradient(260px 180px at 22% 78%, rgba(74,171,147,.12), transparent 65%);
-  animation: ambientDrift 22s ease-in-out infinite alternate;
-  pointer-events: none; z-index: 0;
-}
-@keyframes ambientDrift {
-  0%   { transform:scale(1) translate(0,0); }
-  25%  { transform:scale(1.03) translate(.8%,-.4%); }
-  50%  { transform:scale(.98) translate(-.6%,.8%); }
-  75%  { transform:scale(1.02) translate(.4%,.6%); }
-  100% { transform:scale(1.01) translate(.3%,.2%); }
-}
-
-/* ============================================================
-   EMERGENCY OVERLAY
-   ============================================================ */
-.emergency-overlay {
-  position: fixed; inset: 0;
-  z-index: 100;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .4s ease;
-}
-.emergency-overlay.active { opacity: 1; pointer-events: auto; }
-
-.em-tint {
-  position: absolute; inset: 0;
-  background: rgba(180, 10, 0, .10);
-}
-
-.em-border {
-  position: absolute; inset: 0;
-  border: 2px solid rgba(200, 20, 10, .40);
-  pointer-events: none;
-}
-
-.em-radar { display: none; }
-.em-rings { display: none; }
-
-.em-panel {
-  position: absolute;
-  inset: 0;
-  background: rgba(180, 10, 0, .96);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 0;
-  transform: none;
-  transition: opacity .35s ease;
-  opacity: 0;
-}
-.emergency-overlay.active .em-panel {
-  transform: none;
-  opacity: 1;
-  transition-delay: .1s;
-}
-
-.em-icon-wrap {
-  width: 56px; height: 56px;
-  margin-bottom: 20px;
-  border-radius: 14px;
-  background: rgba(255,255,255,.12);
-  border: 1px solid rgba(255,255,255,.25);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 26px;
-  color: #fff;
-}
-
-.em-alarm-text {
-  font-family: var(--f-display);
-  font-size: 11px; font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: rgba(255,255,255,.60);
-  margin-bottom: 8px;
-}
-
-.em-hazard {
-  font-family: var(--f-display);
-  font-size: 36px; font-weight: 700;
-  letter-spacing: -.5px;
-  color: #fff;
-  margin-bottom: 12px;
-}
-
-.em-meta {
-  font-size: 13px; color: rgba(255,255,255,.65);
-  margin-bottom: 20px;
-  display: flex; gap: 24px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.em-meta span { display: flex; align-items: center; gap: 4px; }
-.em-meta strong { color: #fff; font-weight: 600; }
-
-.em-message {
-  font-size: 15px; font-weight: 400;
-  color: rgba(255,255,255,.80);
-  line-height: 1.6;
-  max-width: 360px;
-  padding: 0;
-  background: none;
-  border: none;
-  border-radius: 0;
-  margin-bottom: 32px;
-}
-
-.em-dismiss {
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 600;
-  color: rgba(180,10,0,.90);
-  background: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 13px 32px;
-  cursor: pointer;
-  transition: background .15s ease, box-shadow .15s ease;
-  min-width: 200px;
-}
-.em-dismiss:hover { background: rgba(255,255,255,.90); box-shadow: 0 4px 16px rgba(0,0,0,.20); }
-.em-timer { font-size: 11px; color: rgba(255,255,255,.45); margin-top: 12px; }
-
-.em-flash-l, .em-flash-r { display: none; }
-
-@keyframes screenShake {
-  0%       { transform: translate(0,0); }
-  15%      { transform: translate(-2px, 1px); }
-  30%      { transform: translate(2px, -1px); }
-  45%      { transform: translate(-1px, 2px); }
-  60%      { transform: translate(1px, -1px); }
-  75%      { transform: translate(-1px, 1px); }
-  90%,100% { transform: translate(0,0); }
-}
-body.shaking { animation: screenShake .4s ease; }
-
-.glass.emergency-tint {
-  border-color: rgba(255,32,16,.25) !important;
-  box-shadow: var(--shadow-card), 0 0 0 1px rgba(255,32,16,.08), 0 0 20px rgba(255,32,16,.06) !important;
-  transition: box-shadow .8s ease, border-color .8s ease !important;
-}
-
-/* ============================================================
-   LIGHT RAYS & BOKEH
-   ============================================================ */
-.light-rays { position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden; }
-.ray {
-  position:absolute; top:-20%; width:1px; height:140%;
-  transform-origin:top center; opacity:0;
-  animation:rayPass var(--dur,18s) var(--delay,0s) ease-in-out infinite;
-}
-.ray::before {
-  content:""; position:absolute; inset:0;
-  background:
-    radial-gradient(ellipse var(--w,80px) 100% at 50% 50%,
-      rgba(255,255,255,var(--op,.06)) 0%,
-      rgba(255,255,255,calc(var(--op,.06)*0.5)) 55%,
-      transparent 100%),
-    linear-gradient(180deg,transparent 0%,rgba(255,255,255,var(--op,.06)) 25%,rgba(255,255,255,var(--op,.06)) 65%,transparent 100%);
-  width:var(--w,80px); margin-left:calc(var(--w,80px)/-2);
-}
-@keyframes rayPass {
-  0%   { opacity:0; transform:rotate(var(--r,-18deg)) translateX(-8%); }
-  8%   { opacity:1; }
-  45%  { opacity:var(--peak-op,.7); }
-  88%  { opacity:1; }
-  100% { opacity:0; transform:rotate(var(--r,-18deg)) translateX(8%); }
-}
-
-.bokeh-layer { position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden; }
-.bokeh {
-  position:absolute; border-radius:50%;
-  background:radial-gradient(circle at 35% 30%,rgba(255,255,255,var(--bo,.55)),rgba(255,255,255,.04) 60%,transparent 80%);
-  border:1px solid rgba(255,255,255,var(--bbo,.18));
-  animation:
-    bokehFloat var(--bd,20s) var(--bdelay,0s) ease-in-out infinite alternate,
-    bokehFade  var(--bd,20s) var(--bdelay,0s) ease-in-out infinite alternate;
-}
-@keyframes bokehFloat {
-  0%   { transform:translate(0,0) scale(1); }
-  33%  { transform:translate(var(--bx1,12px),var(--by1,-8px)) scale(1.06); }
-  66%  { transform:translate(var(--bx2,-6px),var(--by2,14px)) scale(.96); }
-  100% { transform:translate(var(--bx3,8px),var(--by3,-5px)) scale(1.02); }
-}
-@keyframes bokehFade {
-  0%,100% { opacity:var(--bop,.28); }
-  50%      { opacity:calc(var(--bop,.28)*.5); }
-}
-
-/* ============================================================
-   LAYOUT
-   ============================================================ */
-.layout {
-  position:relative;z-index:1;
-  display:flex;justify-content:center;align-items:flex-start;
-  gap:22px;max-width:1360px;margin:0 auto;padding:0 20px;
-}
-.side { display:none; }
-@media (min-width:1120px) {
-  .side {
-    display:flex;flex-direction:column;gap:16px;
-    width:272px;flex:none;position:sticky;top:22px;
-    padding-top:18px;filter:brightness(.985);
-  }
-}
-
-/* ============ SIDE BRAND ============ */
-.side-brand { display:flex;align-items:center;gap:12px; }
-.side-brand .mark {
-  width:44px;height:44px;border-radius:14px;flex:none;
-  background:linear-gradient(145deg,rgba(74,171,147,.95),rgba(49,111,96,.85));
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 1px 0 rgba(255,255,255,.60) inset,0 0 0 0.5px rgba(255,255,255,.40),0 6px 16px rgba(30,80,68,.30),0 12px 28px rgba(30,80,68,.18);
-  position:relative;overflow:hidden;
-}
-.side-brand .mark::before {
-  content:"";position:absolute;top:0;left:0;right:0;height:55%;
-  background:linear-gradient(180deg,rgba(255,255,255,.38),transparent);border-radius:14px 14px 0 0;
-}
-.side-brand .mark::after {
-  content:"";position:absolute;inset:0;border-radius:14px;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);pointer-events:none;
-}
-.side-brand .mark svg { width:22px;height:22px;color:#fff;position:relative;z-index:1; }
-.side-brand .word { font-family:var(--f-display);font-weight:700;font-size:17px;letter-spacing:-.2px; }
-.side-brand .sub { font-size:11.5px;color:var(--muted);margin-top:1px; }
-
-.quick-row {
-  display:flex;justify-content:space-between;align-items:center;
-  padding:9px 2px;border-bottom:1px solid var(--hair);font-size:13px;
-}
-.quick-row:last-child { border-bottom:none; }
-.quick-row .k { color:var(--muted); }
-.quick-row .v { font-weight:600; }
-.quick-row .v.online { color:var(--accent-2); }
-.quick-row .v.offline { color:#b3261e; }
-
-.mini-hlist { display:flex;flex-direction:column;gap:8px; }
-.mini-hitem { display:flex;align-items:center;gap:9px;font-size:12.5px;padding:2px 0; }
-.mini-hitem .ico {
-  width:22px;height:22px;border-radius:7px;
-  display:flex;align-items:center;justify-content:center;font-size:12px;
-  background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.88);
-  box-shadow:0 1px 3px rgba(20,60,30,.06),inset 0 1px 0 rgba(255,255,255,.8);flex:none;
-}
-.mini-hitem .kind { font-weight:600;text-transform:capitalize;flex:1;min-width:0; }
-.mini-hitem .conf { color:var(--muted);white-space:nowrap; }
-.mini-empty { font-size:12.5px;color:var(--muted-2);padding:4px 2px; }
-
-/* ============================================================
-   ANALYTICS CARD
-   ============================================================ */
-.analytics-card { padding:20px 18px 18px; }
-.donut-wrap { position:relative;width:160px;height:160px;margin:8px auto 16px; }
-
-.donut-ring {
-  position:absolute;inset:-6px;border-radius:50%;
-  background:transparent;border:1px solid rgba(255,255,255,.55);
-  box-shadow:0 0 0 1px rgba(61,141,122,.08),0 0 18px rgba(61,141,122,.12),0 0 36px rgba(61,141,122,.06),inset 0 1px 0 rgba(255,255,255,.6),inset 0 0 12px rgba(255,255,255,.15);
-  pointer-events:none;animation:ringBreath 4s ease-in-out infinite alternate;
-}
-@keyframes ringBreath {
-  0%   { box-shadow:0 0 0 1px rgba(61,141,122,.08),0 0 18px rgba(61,141,122,.12),0 0 36px rgba(61,141,122,.06),inset 0 1px 0 rgba(255,255,255,.6),inset 0 0 12px rgba(255,255,255,.15); }
-  100% { box-shadow:0 0 0 1px rgba(61,141,122,.14),0 0 26px rgba(61,141,122,.18),0 0 52px rgba(61,141,122,.09),inset 0 1px 0 rgba(255,255,255,.7),inset 0 0 16px rgba(255,255,255,.20); }
-}
-
-.donut-svg { width:100%;height:100%;transform:rotate(-90deg);overflow:visible;filter:drop-shadow(0 4px 12px rgba(20,60,30,.10)); }
-.donut-track { stroke:rgba(255,255,255,.28);stroke-linecap:round; }
-.donut-seg { fill:none;stroke-width:18;stroke-linecap:round;transition:stroke-width .25s cubic-bezier(.34,1.56,.64,1),filter .25s ease;cursor:pointer; }
-.donut-seg:hover { stroke-width:22;filter:brightness(1.12) drop-shadow(0 0 8px currentColor); }
-.donut-seg.fire      { stroke:#ff3b30; }
-.donut-seg.smoke     { stroke:#9a9a9e; }
-.donut-seg.flood     { stroke:#A3D1C6; }
-.donut-seg.landslide { stroke:#ff9f0a; }
-.donut-shimmer { fill:none;stroke:rgba(255,255,255,.18);stroke-width:18;stroke-dasharray:2 6;stroke-linecap:round;pointer-events:none;animation:shimmerRing 3s linear infinite; }
-@keyframes shimmerRing { 0%{stroke-dashoffset:0} 100%{stroke-dashoffset:-50} }
-.donut-hole { fill:rgba(255,255,255,.60); }
-.donut-hole-sheen { fill:url(#holeGrad); }
-.donut-center { position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none; }
-.donut-total { font-family:var(--f-display);font-size:32px;font-weight:800;letter-spacing:-1px;color:var(--text);line-height:1;text-shadow:0 1px 2px rgba(255,255,255,.8);transition:all .5s cubic-bezier(.34,1.56,.64,1); }
-.donut-sub { font-size:9.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px; }
-.donut-empty { position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:var(--muted-2);font-weight:500;letter-spacing:.2px;pointer-events:none; }
-.donut-empty.show { display:flex; }
-.donut-center.hide { display:none; }
-
-.an-legend { display:flex;flex-direction:column;gap:5px;margin-top:4px; }
-.an-leg-row {
-  display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:12px;
-  background:linear-gradient(172deg,rgba(255,255,255,.65) 0%,rgba(255,255,255,.42) 100%);
-  border-top:1px solid rgba(255,255,255,.88);border-bottom:1px solid rgba(255,255,255,.22);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.78),0 1px 4px rgba(20,60,30,.05);
-  cursor:pointer;position:relative;overflow:hidden;
-  transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s ease,background .22s ease;
-}
-.an-leg-row::before {
-  content:"";position:absolute;top:0;left:0;right:0;height:50%;
-  background:linear-gradient(180deg,rgba(255,255,255,.32),transparent);pointer-events:none;
-}
-.an-leg-row:hover { transform:translateX(2px) scale(1.01);background:linear-gradient(172deg,rgba(255,255,255,.78) 0%,rgba(255,255,255,.56) 100%); }
-.an-leg-row.highlighted { transform:translateX(3px) scale(1.015);box-shadow:inset 0 1px 0 rgba(255,255,255,.92),0 4px 14px rgba(20,60,30,.10); }
-.an-dot { width:8px;height:8px;border-radius:50%;flex:none;transition:transform .2s cubic-bezier(.34,1.56,.64,1); }
-.an-leg-row:hover .an-dot { transform:scale(1.3); }
-.an-leg-name { font-size:12px;font-weight:600;flex:1;min-width:0;color:var(--text); }
-.an-leg-count { font-size:12px;font-weight:700;color:var(--text);min-width:20px;text-align:right; }
-.an-leg-pct { font-size:11px;font-weight:500;color:var(--muted);min-width:32px;text-align:right; }
-
-.an-meta { margin-top:10px;display:flex;flex-direction:column;gap:6px; }
-.an-meta-row {
-  display:flex;justify-content:space-between;align-items:center;
-  padding:8px 10px;border-radius:12px;
-  background:linear-gradient(172deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.36) 100%);
-  border-top:1px solid rgba(255,255,255,.80);border-bottom:1px solid rgba(255,255,255,.18);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.70);font-size:11.5px;overflow:hidden;position:relative;
-}
-.an-meta-row::before {
-  content:"";position:absolute;top:0;left:0;right:0;height:50%;
-  background:linear-gradient(180deg,rgba(255,255,255,.28),transparent);pointer-events:none;
-}
-.an-meta-label { color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.4px; }
-.an-meta-val { font-weight:700;font-size:12px;text-align:right;transition:opacity .35s ease,transform .35s cubic-bezier(.34,1.56,.64,1); }
-.an-meta-val.updating { animation:metaUpdate .5s cubic-bezier(.34,1.56,.64,1); }
-@keyframes metaUpdate {
-  0%   { opacity:0;transform:translateY(4px) scale(.95); }
-  60%  { opacity:1;transform:translateY(-1px) scale(1.03); }
-  100% { opacity:1;transform:translateY(0) scale(1); }
-}
-
-.donut-tooltip {
-  position:absolute;pointer-events:none;z-index:20;
-  padding:8px 13px;border-radius:14px;
-  background:rgba(18,22,24,.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  border-top:1px solid rgba(255,255,255,.20);border-bottom:1px solid rgba(255,255,255,.07);
-  color:#fff;font-size:12px;font-weight:600;
-  box-shadow:0 4px 16px rgba(0,0,0,.28),0 8px 28px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.16);
-  opacity:0;transform:translateY(4px) scale(.96);
-  transition:opacity .22s ease,transform .22s cubic-bezier(.34,1.56,.64,1);
-  white-space:nowrap;text-align:center;
-}
-.donut-tooltip.show { opacity:1;transform:translateY(0) scale(1); }
-.donut-tooltip .tt-name { font-size:11px;color:rgba(255,255,255,.65);font-weight:500;margin-bottom:2px;text-transform:capitalize; }
-.donut-tooltip .tt-count { font-size:18px;font-weight:800;letter-spacing:-.5px; }
-.donut-tooltip .tt-pct { font-size:11px;color:rgba(255,255,255,.55); }
-
-/* ============ APP COLUMN ============ */
-.app { position:relative;z-index:1;width:100%;max-width:640px;margin:0 auto;padding:18px 16px 130px; }
-
-/* ============ TOPBAR ============ */
-.topbar { display:flex;justify-content:space-between;align-items:flex-start;padding:6px 4px 20px; }
-.title-block .eyebrow { font-size:12px;font-weight:600;color:var(--accent-2);letter-spacing:.4px;text-transform:uppercase; }
-.title-block h1 { font-family:var(--f-display);font-size:32px;font-weight:700;letter-spacing:-.5px;margin-top:2px; }
-
-/* ============ CONNECTION PILL ============ */
-.conn-pill {
-  display:flex;align-items:center;gap:7px;padding:8px 14px 8px 10px;border-radius:999px;
-  background:var(--glass);backdrop-filter:blur(20px) saturate(200%);-webkit-backdrop-filter:blur(20px) saturate(200%);
-  border-top:1px solid rgba(255,255,255,.90);border-left:1px solid rgba(255,255,255,.72);
-  border-right:1px solid rgba(255,255,255,.55);border-bottom:1px solid rgba(255,255,255,.28);
-  box-shadow:var(--shadow-btn-ghost);font-size:12.5px;font-weight:600;color:var(--muted);
-  white-space:nowrap;margin-top:4px;position:relative;overflow:hidden;
-  transition:box-shadow .3s ease,color .3s ease,background .3s ease;
-}
-.conn-pill::before {
-  content:"";position:absolute;top:0;left:0;right:0;height:50%;
-  background:linear-gradient(180deg,rgba(255,255,255,.52),transparent);
-  pointer-events:none;border-radius:999px 999px 0 0;
-}
-.conn-pill::after {
-  content:"";position:absolute;inset:0;border-radius:999px;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.20);pointer-events:none;
-}
-.conn-dot {
-  width:8px;height:8px;border-radius:50%;background:var(--muted-2);
-  transition:background .4s,box-shadow .4s;position:relative;z-index:1;flex:none;
-}
-.conn-pill.online .conn-dot { background:var(--accent);box-shadow:0 0 0 3px rgba(61,141,122,.18),0 0 10px rgba(61,141,122,.7);animation:dotPulse 2.6s ease-in-out infinite; }
-@keyframes dotPulse {
-  0%,100% { box-shadow:0 0 0 2px rgba(61,141,122,.15),0 0 8px rgba(61,141,122,.55); }
-  50%      { box-shadow:0 0 0 4px rgba(61,141,122,.10),0 0 16px rgba(61,141,122,.80); }
-}
-.conn-pill.online  { color:#2b6656; }
-.conn-pill.offline .conn-dot { background:var(--red);box-shadow:0 0 8px rgba(255,59,48,.65); }
-.conn-pill.offline { color:#b3261e; }
-
-.conn-pill.emergency {
-  background:rgba(255,32,16,.15);
-  border-color:rgba(255,32,16,.40);
-  color:var(--emergency-red);
-  animation:emConnPulse 1.2s ease-in-out infinite;
-}
-.conn-pill.emergency .conn-dot {
-  background:var(--emergency-red);
-  box-shadow:0 0 0 3px rgba(255,32,16,.20),0 0 10px var(--emergency-red);
-  animation:emDotSpin 1.2s ease-in-out infinite;
-}
-@keyframes emConnPulse {
-  0%,100% { box-shadow:var(--shadow-btn-ghost),0 0 12px rgba(255,32,16,.20); }
-  50%      { box-shadow:var(--shadow-btn-ghost),0 0 24px rgba(255,32,16,.40); }
-}
-@keyframes emDotSpin {
-  0%,100% { box-shadow:0 0 0 2px rgba(255,32,16,.15),0 0 8px rgba(255,32,16,.60); }
-  50%      { box-shadow:0 0 0 5px rgba(255,32,16,.08),0 0 18px rgba(255,32,16,.90); }
-}
-
-/* ============================================================
-   GLASS CARD
-   ============================================================ */
-.glass {
-  position:relative;
-  background:linear-gradient(172deg,rgba(255,255,255,.68) 0%,rgba(255,255,255,.50) 35%,rgba(255,255,255,.42) 65%,rgba(255,255,255,.50) 85%,rgba(255,255,255,.56) 100%);
-  backdrop-filter:blur(28px) saturate(200%);-webkit-backdrop-filter:blur(28px) saturate(200%);
-  border-top:1px solid rgba(255,255,255,.92);border-left:1px solid rgba(255,255,255,.72);
-  border-right:1px solid rgba(255,255,255,.52);border-bottom:1px solid rgba(255,255,255,.28);
-  border-radius:28px;box-shadow:var(--shadow-card);
-  padding:22px;margin-bottom:18px;overflow:hidden;
-  transition:box-shadow .45s cubic-bezier(.25,.46,.45,.94),transform .35s cubic-bezier(.25,.46,.45,.94),filter .35s ease;
-}
-.glass::before {
-  content:"";position:absolute;top:0;left:0;right:0;height:52%;
-  background:linear-gradient(180deg,rgba(255,255,255,.46) 0%,rgba(255,255,255,.20) 45%,transparent 100%);
-  border-radius:28px 28px 0 0;pointer-events:none;z-index:1;
-}
-.glass::after {
-  content:"";position:absolute;inset:0;
-  background:radial-gradient(300px 240px at var(--mx) var(--my),rgba(255,255,255,.62) 0%,rgba(255,255,255,.18) 45%,transparent 72%);
-  opacity:0;transition:opacity .45s ease;pointer-events:none;z-index:2;border-radius:inherit;
-}
-.glass:hover::after { opacity:.45; }
-.glass.idle-sheen::after {
-  /* Static soft highlight for touch devices — no motion, so it doesn't
-     read as a shimmer constantly sweeping across every card. */
-  opacity:.22;
-}
-
-.glass.refreshing {
-  animation: cardRefresh .7s cubic-bezier(.34,1.56,.64,1);
-}
-@keyframes cardRefresh {
-  0%   { transform: translateY(0) scale(1); }
-  25%  { transform: translateY(-3px) scale(1.008); }
-  60%  { transform: translateY(1px) scale(.998); }
-  100% { transform: translateY(0) scale(1); }
-}
-
-/* ============================================================
-   PER-CARD UPDATE FLASH — simple brightness pulse, no chromatic
-   split and no diagonal light bar. Used by sweepCard() whenever
-   a card's data updates.
-   ============================================================ */
-.glass.card-flash {
-  animation: cardFlash .6s ease-out;
-}
-@keyframes cardFlash {
-  0%   { filter: brightness(1); }
-  35%  { filter: brightness(1.16); }
-  100% { filter: brightness(1); }
-}
-
-.glass-edge {
-  position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:3;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.22),inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(255,255,255,.10),inset 1px 0 rgba(255,255,255,.18),inset -1px 0 rgba(255,255,255,.12);
-}
-
-@media (hover:hover) { .glass:hover { box-shadow:var(--shadow-card-hover); } }
-
-.card-head {
-  display:flex;justify-content:space-between;align-items:center;
-  margin-bottom:16px;position:relative;z-index:5;
-}
-.card-head h2 { font-family:var(--f-display);font-size:18px;font-weight:700;letter-spacing:-.25px; }
-.card-head .tag {
-  font-size:11.5px;font-weight:600;color:var(--muted);
-  background:rgba(255,255,255,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  padding:4px 12px;border-radius:999px;border-top:1px solid rgba(255,255,255,.90);
-  border-bottom:1px solid rgba(255,255,255,.38);
-  box-shadow:0 1px 4px rgba(20,60,30,.06),inset 0 1px 0 rgba(255,255,255,.9);
-  transition:transform .2s ease,background .3s ease,color .3s ease;
-}
-.card-head .tag.emergency-tag {
-  background:rgba(255,32,16,.15);
-  color:var(--emergency-red);
-  border-top-color:rgba(255,32,16,.30);
-  animation:tagEmergencyPulse 1.2s ease-in-out infinite;
-}
-@keyframes tagEmergencyPulse {
-  0%,100% { box-shadow:0 1px 4px rgba(255,32,16,.10),inset 0 1px 0 rgba(255,255,255,.8); }
-  50%      { box-shadow:0 1px 8px rgba(255,32,16,.30),inset 0 1px 0 rgba(255,255,255,.8),0 0 10px rgba(255,32,16,.15); }
-}
-
-/* ============================================================
-   VIEW TRANSITIONS
-   ============================================================ */
-.view { display:none; }
-.view.active { display:block;animation:viewRise .58s cubic-bezier(.22,1,.36,1); }
-@keyframes viewRise {
-  0%   { opacity:0;transform:translateY(32px) scale(.960);filter:blur(6px); }
-  40%  { opacity:1;filter:blur(0); }
-  100% { opacity:1;transform:translateY(0) scale(1);filter:blur(0); }
-}
-
-/* ============================================================
-   CAMERA SCOPE
-   ============================================================ */
-.scope {
-  position:relative;width:100%;aspect-ratio:16/10;background:#060e08;
-  border-radius:20px;overflow:hidden;
-  border-top:1px solid rgba(255,255,255,.60);border-left:1px solid rgba(255,255,255,.38);
-  border-right:1px solid rgba(255,255,255,.25);border-bottom:1px solid rgba(255,255,255,.12);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.35),
-    inset 0 0 0 1px rgba(255,255,255,.10),
-    0 4px 16px rgba(0,0,0,.20),
-    0 12px 32px rgba(0,0,0,.16),
-    0 24px 60px rgba(0,0,0,.10);
-  transition:box-shadow .35s ease;
-}
-.scope img { display:block;width:100%;height:100%;object-fit:cover; }
-
-.scope-reflection {
-  position:absolute;inset:0;pointer-events:none;z-index:4;
-  background:
-    linear-gradient(118deg,transparent 0%,rgba(255,255,255,.06) 28%,rgba(255,255,255,.12) 32%,rgba(255,255,255,.04) 36%,transparent 40%),
-    linear-gradient(118deg,transparent 55%,rgba(255,255,255,.05) 68%,rgba(255,255,255,.08) 71%,rgba(255,255,255,.03) 74%,transparent 78%);
-  border-radius:inherit;
-  opacity:.85;
-}
-
-.scope-edge-light {
-  position:absolute;inset:0;pointer-events:none;z-index:5;border-radius:20px;
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.18),
-    inset 1px 0 0 rgba(255,255,255,.12),
-    inset -1px 0 0 rgba(255,255,255,.08),
-    inset 0 1px 0 rgba(255,255,255,.28),
-    inset 0 -1px 0 rgba(255,255,255,.06);
-}
-
-.scope-glow {
-  position:absolute;inset:-4px;pointer-events:none;z-index:-1;
-  border-radius:24px;
-  background:transparent;
-  box-shadow:0 0 0 2px rgba(255,255,255,.08),0 0 30px rgba(61,141,122,.12),0 0 60px rgba(61,141,122,.06);
-  animation:scopeGlowBreath 5s ease-in-out infinite alternate;
-}
-@keyframes scopeGlowBreath {
-  0%   { box-shadow:0 0 0 2px rgba(255,255,255,.08),0 0 30px rgba(61,141,122,.12),0 0 60px rgba(61,141,122,.06); }
-  100% { box-shadow:0 0 0 2px rgba(255,255,255,.12),0 0 40px rgba(61,141,122,.18),0 0 80px rgba(61,141,122,.09); }
-}
-
-.scope-shimmer {
-  position:absolute;inset:0;pointer-events:none;z-index:6;border-radius:inherit;
-  background:linear-gradient(135deg,transparent 30%,rgba(255,255,255,.15) 50%,transparent 70%);
-  transform:translateX(-100%) skewX(-15deg);
-  opacity:0;transition:opacity .1s ease;
-}
-.scope.shimmering .scope-shimmer {
-  opacity:1;animation:scopeShimmerRun .6s cubic-bezier(.25,.46,.45,.94) forwards;
-}
-@keyframes scopeShimmerRun {
-  0%   { transform:translateX(-100%) skewX(-15deg); }
-  100% { transform:translateX(220%) skewX(-15deg); }
-}
-
-.scope-inner-glow {
-  position:absolute;inset:0;border-radius:inherit;
-  background:linear-gradient(180deg,rgba(255,255,255,.06) 0%,transparent 30%,transparent 70%,rgba(0,0,0,.08) 100%);
-  pointer-events:none;z-index:3;
-}
-.scope-corner { position:absolute;width:28px;height:28px;pointer-events:none;z-index:4;opacity:.55; }
-.scope-corner.tl { top:0;left:0;background:linear-gradient(135deg,rgba(255,255,255,.45) 0%,transparent 50%);border-radius:20px 0 0 0; }
-.scope-corner.tr { top:0;right:0;background:linear-gradient(225deg,rgba(255,255,255,.30) 0%,transparent 55%);border-radius:0 20px 0 0; }
-.scope-corner.bl { bottom:0;left:0;background:linear-gradient(45deg,rgba(255,255,255,.12) 0%,transparent 55%);border-radius:0 0 0 20px; }
-.scope-corner.br { bottom:0;right:0;background:linear-gradient(315deg,rgba(255,255,255,.08) 0%,transparent 55%);border-radius:0 0 20px 0; }
-
-.scope-badge {
-  position:absolute;top:12px;left:12px;
-  display:flex;align-items:center;gap:6px;
-  font-size:11px;font-weight:700;letter-spacing:.5px;color:#fff;
-  background:rgba(10,10,12,.48);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px);
-  padding:6px 11px 6px 8px;border-radius:999px;
-  border-top:1px solid rgba(255,255,255,.24);border-bottom:1px solid rgba(255,255,255,.08);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.20),0 2px 8px rgba(0,0,0,.28);z-index:5;
-  transition:background .3s ease;
-}
-.scope-badge::before {
-  content:"";width:7px;height:7px;border-radius:50%;background:var(--red);
-  box-shadow:0 0 0 2px rgba(255,59,48,.28),0 0 10px rgba(255,59,48,.85);
-  animation:recPulse 1.5s cubic-bezier(.45,0,.55,1) infinite;
-}
-@keyframes recPulse {
-  0%,100% { opacity:1;box-shadow:0 0 0 2px rgba(255,59,48,.28),0 0 10px rgba(255,59,48,.85); }
-  50%      { opacity:.38;box-shadow:0 0 0 4px rgba(255,59,48,.10),0 0 4px rgba(255,59,48,.35); }
-}
-
-.scope.emergency-cam {
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.35),
-    inset 0 0 0 1px rgba(255,32,16,.20),
-    0 4px 16px rgba(255,32,16,.20),
-    0 12px 32px rgba(255,32,16,.14),
-    0 24px 60px rgba(0,0,0,.10);
-  border-color:rgba(255,32,16,.30);
-}
-.scope.emergency-cam .scope-glow {
-  box-shadow:0 0 0 2px rgba(255,32,16,.12),0 0 30px rgba(255,32,16,.22),0 0 60px rgba(255,32,16,.10);
-}
-
-/* ============================================================
-   CAMERA OFFLINE STATE
-   ============================================================ */
-.scope img {
-  transition:opacity .6s cubic-bezier(.22,1,.36,1),filter .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1);
-}
-.scope.is-offline img { opacity:0;filter:blur(7px) saturate(55%);transform:scale(1.025); }
-
-.scope-offline {
-  position:absolute;inset:0;z-index:2;border-radius:inherit;overflow:hidden;
-  opacity:0;pointer-events:none;
-  background:radial-gradient(120% 100% at 50% 22%,#0d100e 0%,#07080a 55%,#020202 100%);
-  transition:opacity .7s cubic-bezier(.22,1,.36,1);
-}
-.scope.is-offline .scope-offline { opacity:1; }
-
-.scope-offline-grain {
-  position:absolute;inset:-25%;pointer-events:none;opacity:.045;mix-blend-mode:overlay;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  background-size:160px 160px;
-  animation:scopeOfflineGrainShift 9s steps(6) infinite;
-}
-@keyframes scopeOfflineGrainShift {
-  0%   { transform:translate3d(0,0,0); }
-  100% { transform:translate3d(-38px,-26px,0); }
-}
-
-.scope-offline-sheen {
-  position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(116deg,transparent 42%,rgba(255,255,255,.045) 48%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.045) 52%,transparent 58%);
-  animation:scopeOfflineSheenDrift 11s ease-in-out infinite alternate;
-}
-@keyframes scopeOfflineSheenDrift {
-  0%   { transform:translate3d(-8%,-3%,0) skewX(-3deg); }
-  100% { transform:translate3d(8%,3%,0) skewX(2deg); }
-}
-
-.scope-offline-shimmer {
-  position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.028) 45%,rgba(255,255,255,.06) 50%,rgba(255,255,255,.028) 55%,transparent 100%);
-  animation:scopeOfflineShimmerSweep 16s ease-in-out infinite alternate;
-}
-@keyframes scopeOfflineShimmerSweep {
-  0%   { transform:translate3d(-55%,0,0) rotate(6deg);opacity:.5; }
-  100% { transform:translate3d(55%,0,0) rotate(6deg);opacity:1; }
-}
-
-.scope-offline-vignette {
-  position:absolute;inset:0;pointer-events:none;
-  background:radial-gradient(120% 100% at 50% 50%,transparent 38%,rgba(0,0,0,.55) 100%);
-}
-
-.scope-offline-glow {
-  position:absolute;left:50%;top:46%;width:230px;height:230px;
-  transform:translate3d(-50%,-50%,0);pointer-events:none;
-  background:radial-gradient(circle,rgba(255,255,255,.055) 0%,transparent 68%);
-  animation:scopeOfflineGlowBreath 4.5s ease-in-out infinite;
-}
-@keyframes scopeOfflineGlowBreath {
-  0%,100% { opacity:.55;transform:translate3d(-50%,-50%,0) scale(1); }
-  50%     { opacity:1;transform:translate3d(-50%,-50%,0) scale(1.08); }
-}
-
-.scope-offline-dust { position:absolute;inset:0;pointer-events:none; }
-.scope-offline-dust span {
-  position:absolute;width:2px;height:2px;border-radius:50%;
-  background:rgba(255,255,255,.55);opacity:0;
-  animation-name:scopeOfflineDustFloat;animation-timing-function:ease-in-out;animation-iteration-count:infinite;
-}
-@keyframes scopeOfflineDustFloat {
-  0%   { transform:translate3d(0,0,0);opacity:0; }
-  12%  { opacity:.6; }
-  50%  { opacity:.3; }
-  88%  { opacity:0; }
-  100% { transform:translate3d(5px,-24px,0);opacity:0; }
-}
-
-.scope-offline-content {
-  position:absolute;inset:0;z-index:1;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
-  transform:translate3d(0,6px,0);opacity:0;
-  transition:transform .7s cubic-bezier(.22,1,.36,1),opacity .7s ease;
-}
-.scope.is-offline .scope-offline-content { transform:translate3d(0,0,0);opacity:1; }
-.scope-offline-title {
-  font-size:14.5px;font-weight:600;letter-spacing:2.2px;text-transform:uppercase;
-  color:rgba(255,255,255,.90);text-shadow:0 1px 12px rgba(0,0,0,.4);
-}
-.scope-offline-subtitle {
-  font-size:12px;font-weight:400;letter-spacing:.2px;color:rgba(255,255,255,.42);
-}
-.scope-offline-ring {
-  width:30px;height:30px;margin-top:14px;border-radius:50%;
-  background:conic-gradient(from 0deg,rgba(255,255,255,.85) 0deg 38deg,transparent 38deg 90deg,rgba(255,255,255,.5) 90deg 128deg,transparent 128deg 180deg,rgba(255,255,255,.85) 180deg 218deg,transparent 218deg 270deg,rgba(255,255,255,.5) 270deg 308deg,transparent 308deg 360deg);
-  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2.5px));
-  mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2.5px));
-  animation:scopeOfflineRingSpin 1.6s linear infinite;
-}
-@keyframes scopeOfflineRingSpin { to { transform:rotate(360deg); } }
-
-.scope-offline.paused,.scope-offline.paused * { animation-play-state:paused !important; }
-
-@media (prefers-reduced-motion:reduce) {
-  .scope-offline-grain,.scope-offline-sheen,.scope-offline-shimmer,.scope-offline-glow,
-  .scope-offline-dust span,.scope-offline-ring { animation:none !important; }
-}
-
-/* ============================================================
-   STATUS CHIPS
-   ============================================================ */
-.chip-row { display:flex;flex-direction:column;gap:10px;margin-top:16px; }
-.chip {
-  display:flex;align-items:center;justify-content:space-between;
-  padding:13px 17px;border-radius:18px;
-  background:linear-gradient(172deg,rgba(255,255,255,.74) 0%,rgba(255,255,255,.52) 100%);
-  border-top:1px solid rgba(255,255,255,.92);border-left:1px solid rgba(255,255,255,.70);
-  border-right:1px solid rgba(255,255,255,.50);border-bottom:1px solid rgba(255,255,255,.26);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.82),inset 0 0 0 1px rgba(255,255,255,.15),0 2px 6px rgba(20,60,30,.05),0 6px 18px rgba(20,60,30,.06);
-  position:relative;overflow:hidden;
-  transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s ease;
-}
-.chip::before {
-  content:"";position:absolute;top:0;left:0;right:0;height:50%;
-  background:linear-gradient(180deg,rgba(255,255,255,.40),transparent);pointer-events:none;
-}
-.chip::after {
-  content:"";position:absolute;top:8px;left:-40%;width:30%;height:60%;
-  background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,.28) 40%,rgba(255,255,255,.12) 55%,transparent 100%);
-  transform:skewX(-20deg);pointer-events:none;transition:left .5s ease,opacity .3s ease;opacity:0;
-}
-.chip:hover::after { left:130%;opacity:1;transition:left .55s ease,opacity .1s ease; }
-@media (hover:hover) {
-  .chip:hover { transform:translateX(3px) scale(1.008);box-shadow:inset 0 1px 0 rgba(255,255,255,.92),inset 0 0 0 1px rgba(255,255,255,.18),0 4px 10px rgba(20,60,30,.07),0 8px 22px rgba(20,60,30,.08); }
-}
-
-.chip .left { display:flex;align-items:center;gap:11px;position:relative;z-index:1; }
-.chip .swatch {
-  width:10px;height:10px;border-radius:50%;background:var(--muted-2);
-  box-shadow:0 0 0 2px rgba(0,0,0,.06);flex:none;transition:box-shadow .3s ease;
-}
-.chip.fire .swatch     { background:var(--red);box-shadow:0 0 0 2px rgba(255,59,48,.12),0 0 8px rgba(255,59,48,.35); }
-.chip.smoke .swatch    { background:var(--muted-2); }
-.chip.flood .swatch    { background:var(--teal-light);box-shadow:0 0 0 2px rgba(163,209,198,.20),0 0 8px rgba(163,209,198,.45); }
-.chip.landslide .swatch{ background:var(--amber);box-shadow:0 0 0 2px rgba(255,159,10,.15),0 0 8px rgba(255,159,10,.40); }
-.chip .name   { font-weight:600;font-size:14.5px;position:relative;z-index:1; }
-.chip .reading {
-  font-weight:700;font-size:13.5px;color:var(--muted);
-  position:relative;z-index:1;
-  transition:color .3s ease,text-shadow .3s ease;
-}
-.chip .reading.hot { color:var(--red);text-shadow:0 0 14px rgba(255,59,48,.30); }
-
-.chip.pulsing { animation:chipPulse .6s cubic-bezier(.34,1.56,.64,1); }
-@keyframes chipPulse {
-  0%   { transform:scale(1); }
-  35%  { transform:scale(1.025) translateX(2px); }
-  65%  { transform:scale(.995); }
-  100% { transform:scale(1); }
-}
-
-/* ============================================================
-   BUTTONS
-   ============================================================ */
-.btn {
-  position:relative;padding:13px 22px;border-radius:999px;
-  border-top:1px solid rgba(255,255,255,.78);border-left:1px solid rgba(255,255,255,.58);
-  border-right:1px solid rgba(255,255,255,.40);border-bottom:1px solid rgba(255,255,255,.20);
-  background:linear-gradient(172deg,rgba(74,171,147,.94) 0%,rgba(61,141,122,.84) 45%,rgba(49,111,96,.80) 100%);
-  backdrop-filter:blur(16px) saturate(180%);-webkit-backdrop-filter:blur(16px) saturate(180%);
-  color:#fff;font-weight:600;font-size:14.5px;cursor:pointer;box-shadow:var(--shadow-btn);
-  transition:transform .18s cubic-bezier(.34,1.56,.64,1),filter .18s ease,box-shadow .18s ease;
-  overflow:hidden;text-shadow:0 1px 2px rgba(0,40,15,.22);outline:none;
-}
-.btn::before {
-  content:"";position:absolute;top:0;left:0;right:0;height:58%;
-  background:linear-gradient(180deg,rgba(255,255,255,.50) 0%,transparent 100%);
-  border-radius:999px 999px 50% 50%;pointer-events:none;
-}
-.btn::after {
-  content:"";position:absolute;inset:0;
-  background:radial-gradient(ellipse 80% 60% at 50% -5%,rgba(255,255,255,.38),transparent 70%);
-  opacity:0;transition:opacity .22s ease;pointer-events:none;
-}
-.btn .btn-streak {
-  position:absolute;inset:0;
-  background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,.32) 45%,rgba(255,255,255,.14) 58%,transparent 100%);
-  transform:skewX(-20deg) translateX(-150%);pointer-events:none;transition:transform .5s cubic-bezier(.25,.46,.45,.94);
-}
-.btn:hover .btn-streak { transform:skewX(-20deg) translateX(250%); }
-.btn:hover { filter:brightness(1.07); }
-.btn:hover::after { opacity:1; }
-.btn:active { transform:scale(.962);filter:brightness(.96);box-shadow:inset 0 2px 5px rgba(0,40,20,.20),inset 0 0 0 1px rgba(255,255,255,.25),0 2px 6px rgba(30,80,68,.16);transition:transform .08s ease,filter .08s ease,box-shadow .08s ease; }
-.btn .btn-edge { position:absolute;inset:0;border-radius:999px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);pointer-events:none; }
-
-.btn.ghost {
-  background:linear-gradient(172deg,rgba(255,255,255,.72) 0%,rgba(255,255,255,.48) 100%);
-  color:var(--text);border-top-color:rgba(255,255,255,.94);border-left-color:rgba(255,255,255,.78);
-  border-right-color:rgba(255,255,255,.60);border-bottom-color:rgba(255,255,255,.26);
-  box-shadow:var(--shadow-btn-ghost);text-shadow:none;
-}
-.btn.ghost::before { background:linear-gradient(180deg,rgba(255,255,255,.58) 0%,transparent 100%); }
-.btn.ghost::after  { background:radial-gradient(ellipse 80% 60% at 50% -5%,rgba(255,255,255,.55),transparent 70%); }
-.btn.ghost:active  { background:linear-gradient(172deg,rgba(255,255,255,.84),rgba(255,255,255,.64)); }
-.btn.full { width:100%; }
-.btn-row  { display:flex;gap:10px;flex-wrap:wrap;margin-top:18px; }
-
-/* ============================================================
-   TOGGLE SWITCHES
-   ============================================================ */
-.row {
-  display:flex;justify-content:space-between;align-items:center;
-  padding:14px 2px;border-bottom:1px solid var(--hair);
-}
-.row:last-child { border-bottom:none; }
-.row .t-label { font-size:15px;font-weight:500; }
-.row .t-desc { font-size:12.5px;color:var(--muted);margin-top:2px; }
-
-.switch { position:relative;width:50px;height:30px;flex:none; }
-.switch input { opacity:0;width:0;height:0;position:absolute; }
-
-.slider {
-  position:absolute;inset:0;border-radius:999px;cursor:pointer;
-  background:linear-gradient(180deg,rgba(255,255,255,.52) 0%,rgba(255,255,255,.28) 55%,rgba(255,255,255,.38) 100%);
-  backdrop-filter:blur(8px) saturate(160%);-webkit-backdrop-filter:blur(8px) saturate(160%);
-  border-top:1px solid rgba(255,255,255,.82);border-left:1px solid rgba(255,255,255,.65);
-  border-right:1px solid rgba(255,255,255,.50);border-bottom:1px solid rgba(255,255,255,.28);
-  box-shadow:inset 0 2px 6px rgba(20,40,30,.13),inset 0 -1px 0 rgba(255,255,255,.52),0 1px 3px rgba(20,60,30,.08);
-  transition:background .38s ease,box-shadow .38s ease,transform .22s cubic-bezier(.34,1.56,.64,1);
-  overflow:hidden;
-}
-.slider::after {
-  content:"";position:absolute;top:0;left:0;right:0;height:50%;
-  background:linear-gradient(180deg,rgba(255,255,255,.32),transparent);pointer-events:none;
-}
-
-.slider-ripple {
-  position:absolute;inset:0;pointer-events:none;border-radius:999px;
-  background:radial-gradient(circle at var(--ripple-x,50%) 50%,rgba(255,255,255,.55) 0%,transparent 70%);
-  opacity:0;transform:scale(.5);
-  transition:opacity .06s ease,transform .06s ease;
-}
-.slider.rippling .slider-ripple {
-  opacity:1;transform:scale(1);animation:sliderRipple .45s cubic-bezier(.34,1.56,.64,1) forwards;
-}
-@keyframes sliderRipple {
-  0%   { opacity:.8;transform:scale(.3); }
-  50%  { opacity:.5;transform:scale(1.1); }
-  100% { opacity:0;transform:scale(1.4); }
-}
-
-.slider::before {
-  content:"";position:absolute;width:26px;height:26px;left:2px;top:2px;border-radius:50%;
-  background:radial-gradient(circle at 28% 22%,rgba(255,255,255,1.00) 0%,rgba(255,255,255,.78) 28%,rgba(255,255,255,.55) 52%,rgba(255,255,255,.80) 100%);
-  box-shadow:0 1px 0 rgba(255,255,255,.96) inset,0 -1px 0 rgba(0,0,0,.06) inset,0 0 0 0.5px rgba(255,255,255,.45),0 2px 8px rgba(10,40,25,.30),0 4px 14px rgba(10,40,25,.18),0 1px 2px rgba(10,40,25,.12);
-  transition:transform .44s cubic-bezier(.34,1.56,.64,1),width .32s cubic-bezier(.34,1.56,.64,1),left .32s cubic-bezier(.34,1.56,.64,1),box-shadow .3s ease;
-  z-index:1;
-}
-
-.switch input:checked + .slider {
-  background:linear-gradient(180deg,rgba(255,255,255,.40) 0%,rgba(255,255,255,.05) 50%),linear-gradient(160deg,rgba(74,171,147,.95),rgba(49,111,96,.88));
-  border-top-color:rgba(255,255,255,.62);border-bottom-color:rgba(255,255,255,.18);
-  box-shadow:inset 0 2px 5px rgba(15,45,35,.32),inset 0 -1px 0 rgba(255,255,255,.22),0 0 0 1px rgba(61,141,122,.20),0 3px 14px rgba(61,141,122,.38),0 6px 22px rgba(61,141,122,.18);
-}
-.switch input:checked + .slider::before {
-  transform:translateX(20px);
-  box-shadow:0 1px 0 rgba(255,255,255,.96) inset,0 -1px 0 rgba(0,0,0,.06) inset,0 0 0 0.5px rgba(255,255,255,.50),0 2px 8px rgba(30,80,68,.28),0 4px 14px rgba(30,80,68,.16),0 0 12px rgba(61,141,122,.25);
-}
-
-.slider.pressing::before { width:32px; }
-.switch input:checked + .slider.pressing::before { left:-4px;width:32px;transform:translateX(20px); }
-
-.switch.toggling { animation:switchSpring .48s cubic-bezier(.34,1.56,.64,1); }
-@keyframes switchSpring {
-  0%   { transform:scale(1); }
-  20%  { transform:scale(1.12) rotate(2deg); }
-  45%  { transform:scale(.96) rotate(-1deg); }
-  70%  { transform:scale(1.04) rotate(.5deg); }
-  85%  { transform:scale(.99); }
-  100% { transform:scale(1); }
-}
-
-.switch input:checked + .slider.pressing::after {
-  content:"";position:absolute;width:40px;height:40px;border-radius:50%;
-  background:radial-gradient(circle,rgba(61,141,122,.15) 0%,transparent 70%);
-  top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
-  animation:thumbBubble .4s cubic-bezier(.34,1.56,.64,1) forwards;pointer-events:none;
-}
-@keyframes thumbBubble {
-  0%   { transform:translate(-50%,-50%) scale(0); opacity:1; }
-  100% { transform:translate(-50%,-50%) scale(2); opacity:0; }
-}
-
-/* ============================================================
-   SETTINGS FIELD
-   ============================================================ */
-.field { margin-bottom:14px; }
-.field label { display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.45px; }
-.field input[type=text] {
-  width:100%;padding:12px 15px;border-radius:14px;
-  border-top:1px solid rgba(255,255,255,.88);border-left:1px solid rgba(255,255,255,.68);
-  border-right:1px solid rgba(255,255,255,.52);border-bottom:1px solid rgba(255,255,255,.24);
-  background:linear-gradient(172deg,rgba(255,255,255,.85) 0%,rgba(255,255,255,.68) 100%);
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  box-shadow:inset 0 1px 4px rgba(20,40,30,.08),inset 0 0 0 1px rgba(255,255,255,.18),0 1px 3px rgba(20,60,30,.06);
-  font-family:var(--f);font-size:14px;color:var(--text);
-  transition:box-shadow .25s ease,border-color .25s ease;outline:none;
-}
-.field input[type=text]:focus {
-  border-top-color:rgba(61,141,122,.65);border-left-color:rgba(61,141,122,.48);
-  box-shadow:inset 0 1px 4px rgba(20,40,30,.06),inset 0 0 0 1px rgba(61,141,122,.12),0 0 0 3px rgba(61,141,122,.14),0 2px 8px rgba(61,141,122,.10);
-}
-.hint { font-size:12px;color:var(--muted-2);margin-top:6px;line-height:1.6; }
-
-/* ============================================================
-   HISTORY LIST
-   ============================================================ */
-.hlist { display:flex;flex-direction:column;gap:10px; }
-.hitem {
-  display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:18px;
-  background:linear-gradient(172deg,rgba(255,255,255,.74) 0%,rgba(255,255,255,.54) 100%);
-  border-top:1px solid rgba(255,255,255,.90);border-left:1px solid rgba(255,255,255,.72);
-  border-right:1px solid rgba(255,255,255,.52);border-bottom:1px solid rgba(255,255,255,.24);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.82),inset 0 0 0 1px rgba(255,255,255,.14),0 2px 6px rgba(20,60,30,.05),0 6px 16px rgba(20,60,30,.06);
-  position:relative;overflow:hidden;
-  transition:transform .28s cubic-bezier(.34,1.56,.64,1),box-shadow .25s ease;
-}
-.hitem::before {
-  content:"";position:absolute;top:0;left:0;right:0;height:50%;
-  background:linear-gradient(180deg,rgba(255,255,255,.38),transparent);pointer-events:none;
-}
-.hitem::after {
-  content:"";position:absolute;inset:0;
-  background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,.22) 45%,rgba(255,255,255,.10) 55%,transparent 100%);
-  transform:skewX(-15deg) translateX(-160%);pointer-events:none;
-  transition:transform .5s ease,opacity .15s ease;opacity:0;
-}
-.hitem:hover::after { transform:skewX(-15deg) translateX(200%);opacity:1;transition:transform .55s ease,opacity .05s ease; }
-@media (hover:hover) { .hitem:hover { transform:translateX(4px) scale(1.006);box-shadow:inset 0 1px 0 rgba(255,255,255,.92),inset 0 0 0 1px rgba(255,255,255,.18),0 4px 10px rgba(20,60,30,.07),0 8px 22px rgba(20,60,30,.09); } }
-
-.hitem.new-item { animation:slideInItem .55s cubic-bezier(.34,1.56,.64,1);box-shadow:inset 0 1px 0 rgba(255,255,255,.92),inset 0 0 0 1px rgba(255,255,255,.14),0 2px 6px rgba(20,60,30,.05),0 6px 16px rgba(20,60,30,.06),0 0 0 2px rgba(61,141,122,.15),0 0 16px rgba(61,141,122,.08); }
-@keyframes slideInItem {
-  0%   { opacity:0;transform:translateX(-20px) scale(.96); }
-  50%  { opacity:1;transform:translateX(4px) scale(1.006); }
-  100% { transform:translateX(0) scale(1); }
-}
-
-.hitem .ico {
-  width:38px;height:38px;border-radius:12px;
-  display:flex;align-items:center;justify-content:center;
-  background:rgba(255,59,48,.10);border:1px solid rgba(255,59,48,.15);color:var(--red);
-  flex:none;position:relative;z-index:1;box-shadow:inset 0 1px 0 rgba(255,255,255,.65),0 1px 4px rgba(20,60,30,.06);
-}
-.hitem.smoke .ico     { background:rgba(110,110,115,.10);border-color:rgba(110,110,115,.15);color:var(--muted); }
-.hitem.flood .ico     { background:rgba(163,209,198,.28);border-color:rgba(163,209,198,.35);color:#1f6b5c; }
-.hitem.landslide .ico { background:rgba(255,159,10,.12);border-color:rgba(255,159,10,.20);color:#b8720a; }
-.hitem .body { flex:1;min-width:0;position:relative;z-index:1; }
-.hitem .body .top { display:flex;justify-content:space-between;gap:8px; }
-.hitem .kind { font-weight:600;font-size:14px;text-transform:capitalize; }
-.hitem .time { font-size:12px;color:var(--muted-2);white-space:nowrap;animation:fadeInTime .4s ease; }
-@keyframes fadeInTime { 0%{opacity:0;transform:translateY(2px)} 100%{opacity:1;transform:none} }
-.hitem .meta { font-size:12.5px;color:var(--muted);margin-top:2px; }
-
-.hitem.glowing { animation:slideInItem .55s cubic-bezier(.34,1.56,.64,1),itemGlow 1.5s ease-out .3s; }
-@keyframes itemGlow {
-  0%   { box-shadow:inset 0 1px 0 rgba(255,255,255,.92),0 0 0 2px rgba(61,141,122,.25),0 0 20px rgba(61,141,122,.14); }
-  100% { box-shadow:inset 0 1px 0 rgba(255,255,255,.82),0 2px 6px rgba(20,60,30,.05),0 6px 16px rgba(20,60,30,.06); }
-}
-
-.empty { text-align:center;padding:36px 10px;color:var(--muted);font-size:14px; }
-.empty .big { font-size:32px;margin-bottom:10px; }
-
-/* ============================================================
-   CONFIDENCE COUNTER ANIMATION
-   ============================================================ */
-.reading.counting { animation:readingCount .5s cubic-bezier(.34,1.56,.64,1); }
-@keyframes readingCount {
-  0%   { transform:translateY(4px) scale(.92);opacity:0; }
-  60%  { transform:translateY(-2px) scale(1.06);opacity:1; }
-  100% { transform:none;opacity:1; }
-}
-
-/* ============================================================
-   TOAST
-   ============================================================ */
-.toast {
-  position:fixed;left:50%;bottom:112px;
-  transform:translateX(-50%) translateY(24px);opacity:0;pointer-events:none;
-  display:flex;align-items:center;gap:10px;padding:13px 20px;border-radius:999px;
-  background:rgba(18,22,24,.85);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px);
-  border-top:1px solid rgba(255,255,255,.22);border-bottom:1px solid rgba(255,255,255,.08);
-  color:#fff;font-size:13.5px;font-weight:600;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 0 0 0.5px rgba(255,255,255,.12),0 4px 16px rgba(0,0,0,.32),0 12px 32px rgba(0,0,0,.22);
-  z-index:20;transition:opacity .35s cubic-bezier(.2,.8,.2,1),transform .35s cubic-bezier(.2,.8,.2,1);
-  max-width:88vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-.toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
-.toast .dot { width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none; }
-.toast.critical .dot { background:var(--red);box-shadow:0 0 8px rgba(255,59,48,.75); }
-
-/* ============================================================
-   TAB BAR
-   ============================================================ */
-.tabbar {
-  position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));
-  /* translateX(-50%) centres the bar — this transform must NEVER be
-     overridden or animated. The boot sequence fades opacity only. */
-  transform:translateX(-50%);
-  z-index:15;
-  display:flex;justify-content:center;align-items:center;
-  width:max-content;max-width:min(calc(100vw - 24px),calc(100dvw - 24px));
-  gap:2px;padding:8px;
-  background:linear-gradient(172deg,rgba(255,255,255,.82) 0%,rgba(255,255,255,.68) 100%);
-  backdrop-filter:blur(24px) saturate(220%);-webkit-backdrop-filter:blur(24px) saturate(220%);
-  border-top:1px solid rgba(255,255,255,.96);border-left:1px solid rgba(255,255,255,.80);
-  border-right:1px solid rgba(255,255,255,.65);border-bottom:1px solid rgba(255,255,255,.32);
-  border-radius:999px;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.96),
-    inset 0 0 0 1px rgba(255,255,255,.28),
-    0 0 0 0.5px rgba(61,141,122,.08),
-    0 2px 0 rgba(255,255,255,.40),
-    0 8px 22px rgba(20,60,30,.14),
-    0 22px 55px rgba(20,60,30,.16),
-    0 42px 85px rgba(20,60,30,.09),
-    0 0 80px rgba(61,141,122,.06);
-  overflow:hidden;
-}
-
-.tabbar::before {
-  content:"";
-  position:absolute;top:0;left:0;right:0;height:58%;
-  background:linear-gradient(180deg,rgba(255,255,255,.60),rgba(255,255,255,.18) 70%,transparent);
-  pointer-events:none;z-index:0;border-radius:999px 999px 0 0;
-}
-.tabbar::after {
-  content:"";
-  position:absolute;inset:0;border-radius:999px;
-  background:radial-gradient(180px 65px at var(--mx) var(--my),rgba(255,255,255,.72),transparent 72%);
-  opacity:.45;
-  pointer-events:none;z-index:1;
-  transition:opacity .3s ease;
-}
-
-.tabbar-depth {
-  position:absolute;inset:0;border-radius:999px;pointer-events:none;z-index:0;
-  box-shadow:
-    inset 0 2px 0 rgba(255,255,255,.55),
-    inset 0 3px 6px rgba(255,255,255,.25),
-    inset 0 -1px 0 rgba(255,255,255,.20),
-    inset 0 -2px 4px rgba(20,60,30,.06);
-}
-
-.tab {
-  position:relative;z-index:2;
-  display:flex;flex-direction:column;align-items:center;gap:3px;
-  width:60px;padding:9px 4px 8px;
-  border:none;background:transparent;border-radius:999px;cursor:pointer;
-  color:var(--muted-2);transition:color .25s ease;
-}
-.tab svg { width:22px;height:22px;flex:none;transition:transform .25s cubic-bezier(.34,1.56,.64,1),filter .2s ease; }
-.tab:hover svg { transform:scale(1.10); }
-.tab:active svg { transform:scale(.90); }
-.tab span { font-size:10px;font-weight:600;transition:opacity .2s; }
-.tab.active { color:var(--accent-2); }
-.tab.active .ic-wrap {
-  background:rgba(61,141,122,.18);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.65),0 2px 6px rgba(61,141,122,.18);
-}
-.ic-wrap {
-  width:34px;height:26px;display:flex;align-items:center;justify-content:center;
-  border-radius:12px;transition:background .25s ease,box-shadow .25s ease;
-}
-
-.tab-indicator {
-  position:absolute;top:8px;
-  height:calc(100% - 16px);width:60px;left:8px;
-  border-radius:999px;
-  background:linear-gradient(155deg,rgba(61,141,122,.35),rgba(61,141,122,.14));
-  border-top:1px solid rgba(61,141,122,.55);border-bottom:1px solid rgba(61,141,122,.16);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.82),
-    inset 0 0 0 1px rgba(61,141,122,.18),
-    0 2px 8px rgba(61,141,122,.22),
-    0 6px 18px rgba(61,141,122,.16),
-    0 0 20px rgba(61,141,122,.10);
-  pointer-events:none;z-index:0;overflow:hidden;
-}
-.tab-indicator::before {
-  content:"";position:absolute;top:0;left:0;right:0;height:60%;
-  background:linear-gradient(180deg,rgba(255,255,255,.55),transparent);
-  border-radius:999px 999px 0 0;pointer-events:none;
-}
-.tab-indicator::after {
-  content:"";position:absolute;inset:1px;border-radius:999px;
-  background:linear-gradient(180deg,rgba(255,255,255,.12),transparent 50%);
-  pointer-events:none;
-}
-
-/* ============================================================
-   MOBILE TOUCH RIPPLE
-   ============================================================ */
-.touch-ripple {
-  position:fixed;pointer-events:none;z-index:50;
-  width:60px;height:60px;margin:-30px 0 0 -30px;
-  border-radius:50%;
-  background:radial-gradient(circle,rgba(61,141,122,.22) 0%,transparent 70%);
-  border:1px solid rgba(61,141,122,.15);
-  transform:scale(0);opacity:0;
-  animation:none;
-}
-.touch-ripple.active { animation:touchRippleExpand .6s cubic-bezier(.22,1,.36,1) forwards; }
-@keyframes touchRippleExpand {
-  0%   { transform:scale(0);opacity:1; }
-  100% { transform:scale(3);opacity:0; }
-}
-
-/* ============================================================
-   SCROLLBAR HIDE & MOTION
-   ============================================================ */
-::-webkit-scrollbar { width:0;height:0; }
-@media (prefers-reduced-motion:reduce) {
-  *,*::before,*::after { animation-duration:.001ms !important;transition-duration:.001ms !important; }
-}
-@media (max-width:420px) {
-  .title-block h1 { font-size:26px; }
-  .tab { width:max(48px,min(60px,17vw));padding:9px 2px 8px; }
-  .tabbar { gap:0;padding:6px; }
-  .glass { padding:18px;border-radius:24px; }
-}
-
-/* ============================================================
-   COUNTER ANIMATION HELPER
-   ============================================================ */
-.count-up { display:inline-block; }
-
-.side-count-pulse { animation:countPulse .5s cubic-bezier(.34,1.56,.64,1); }
-@keyframes countPulse {
-  0%   { transform:scale(1); }
-  40%  { transform:scale(1.22); }
-  70%  { transform:scale(.95); }
-  100% { transform:scale(1); }
-}
-
-/* ============================================================
-   BOOT SEQUENCE — Simple Liquid Glass
-   ============================================================ */
-
-.boot-screen {
-  position: fixed; inset: 0; z-index: 400;
-  background: #000;
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-  /* transition handled by boot→dashboard block below */
-}
-
-/* Grain */
-.boot-grain {
-  position: absolute; inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-  opacity: 0.10; pointer-events: none; mix-blend-mode: overlay;
-}
-
-/* Chromatic aberration wrapper */
-.boot-chromatic {
-  position: relative;
-  filter: drop-shadow(-2px 0 0.5px rgba(255, 40, 80, 0.20)) drop-shadow(2px 0 0.5px rgba(0, 230, 255, 0.20));
-  animation: bootChromaPulse 2.5s ease-in-out infinite;
-}
-@keyframes bootChromaPulse {
-  0%, 100% { filter: drop-shadow(-1.5px 0 0.5px rgba(255,40,80,0.15)) drop-shadow(1.5px 0 0.5px rgba(0,230,255,0.15)); }
-  50%      { filter: drop-shadow(-3px 0 1px rgba(255,40,80,0.28)) drop-shadow(3px 0 1px rgba(0,230,255,0.28)); }
-}
-
-/* Liquid Glass Circle */
-.boot-circle {
-  width: 160px; height: 160px; border-radius: 50%;
-  position: relative; display: flex; align-items: center; justify-content: center;
-  background:
-    radial-gradient(ellipse 85% 55% at 50% 5%, rgba(255,255,255,0.32) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 35% at 25% 85%, rgba(255,255,255,0.08) 0%, transparent 50%),
-    linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.03) 100%);
-  background-color: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(24px) saturate(1.5);
-  -webkit-backdrop-filter: blur(24px) saturate(1.5);
-  border: 1.5px solid rgba(255, 255, 255, 0.24);
-  box-shadow:
-    inset 0 1.5px 2px rgba(255,255,255,0.35),
-    inset 0 -1px 1px rgba(255,255,255,0.05),
-    0 12px 40px rgba(0,0,0,0.30),
-    0 0 0 1px rgba(255,255,255,0.06);
-  overflow: hidden;
-  /* iOS Safari can fail to clip transform-animated children with just
-     overflow:hidden + border-radius — force it with clip-path too. */
-  clip-path: circle(50%);
-  -webkit-clip-path: circle(50%);
-  opacity: 0; transform: scale(0.6); filter: blur(12px);
-  animation:
-    bootCircleIn 1.0s cubic-bezier(.22,1,.36,1) 0.3s forwards,
-    bootBreath   1.7s ease-in-out               1.3s forwards;
-}
 
-/* Edge refraction */
-.boot-circle::before {
-  content: ''; position: absolute; inset: -2px; border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,0.14) 12%,
-    rgba(255,255,255,0) 28%,
-    rgba(255,255,255,0.08) 48%,
-    rgba(255,255,255,0) 65%,
-    rgba(255,255,255,0.18) 80%,
-    rgba(255,255,255,0) 100%
-  );
-  filter: blur(8px); opacity: 0.5;
-  animation: bootRotateRefraction 6s linear infinite;
-  pointer-events: none;
-}
-@keyframes bootRotateRefraction {
-  0%   { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.app {
+    width: 100%;
+    max-width: 1100px;
 }
 
-/* Inner caustic highlight */
-.boot-circle::after {
-  content: ''; position: absolute; top: 8%; left: 14%; width: 38%; height: 20%;
-  background: radial-gradient(ellipse, rgba(255,255,255,0.50) 0%, transparent 70%);
-  border-radius: 50%; filter: blur(4px); transform: rotate(-18deg); pointer-events: none;
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
 }
 
-
-
-/* Shimmer */
-.boot-shimmer {
-  position: absolute; inset: 0; border-radius: 50%;
-  background: linear-gradient(
-    115deg,
-    transparent 35%,
-    rgba(255,255,255,0.03) 42%,
-    rgba(255,255,255,0.10) 50%,
-    rgba(255,255,255,0.03) 58%,
-    transparent 65%
-  );
-  transform: translateX(-120%) rotate(20deg);
-  animation: bootShimmerMove 3.0s ease-in-out 1.2s infinite;
-  pointer-events: none; mix-blend-mode: soft-light;
+.title {
+    font-size: 28px;
+    font-weight: 700;
 }
-@keyframes ShimmerMove {
-  0%   { transform: translateX(-120%) rotate(20deg); }
-  100% { transform: translateX(120%) rotate(20deg); }
-}
 
-/* Fade out the circle */
-.boot-circle.boot-fade-out {
-  animation: bootCircleOut 1.0s cubic-bezier(.65, 0, .35, 1) 0s forwards;
+.status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #151c1a;
+    font-size: 14px;
 }
-@keyframes bootCircleOut {
-  0%   { opacity: 0.40; transform: scale(1);   filter: blur(0px); }
-  100% { opacity: 0;    transform: scale(0.85); filter: blur(8px); }
-}
 
-/* Circle entrance */
-@keyframes bootCircleIn {
-  0%   { opacity: 0; transform: scale(0.6); filter: blur(12px); }
-  100% { opacity: 1; transform: scale(1); filter: blur(0px); }
+.status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #777;
 }
 
-@keyframes bootBreath {
-  0%   { transform: scale(1);   opacity: 1; }
-  45%  { transform: scale(1.10); opacity: 1; }
-  100% { transform: scale(1);   opacity: 0.40; }
+.status.online .status-dot {
+    background: #35d07f;
 }
 
-/* Darken phase: turns black 0.5s before fading out */
-.boot-circle.boot-darken,
-.mobile-boot .boot-circle.boot-darken {
-  background: rgba(8, 8, 10, 0.94) !important;
-  /* Keep the outline visible — only the inside goes black */
-  border-color: rgba(255, 255, 255, 0.28) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.15),
-    0 8px 24px rgba(0,0,0,0.35) !important;
-  transition: background 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
-}
-.boot-circle.boot-darken::before,
-.mobile-boot .boot-circle.boot-darken::before {
-  opacity: 0 !important;
-  transition: opacity 0.5s ease;
+.camera {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #050707;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid #26302d;
 }
-.boot-circle.boot-darken::after,
-.mobile-boot .boot-circle.boot-darken::after {
-  opacity: 0 !important;
-  transition: opacity 0.5s ease;
-}
-.boot-chromatic.boot-darken,
-.mobile-boot .boot-chromatic.boot-darken {
-  filter: none !important;
-  animation: none !important;
-  transition: filter 0.5s ease;
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .boot-circle, .boot-shimmer, .boot-chromatic {
-    animation: none !important;
-  }
-  .boot-circle { opacity: 1; transform: none; filter: none; }
-  .boot-screen { transition-duration: .2s; }
+.camera img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+    background: #050707;
 }
 
-/* ============================================================
-   NO-BACKDROP-FILTER FALLBACK
-   Feature-queried instead of user-agent sniffed, so it kicks in
-   reliably on any browser (Android or otherwise) that can't do a
-   real backdrop blur — no JS class, no black glass.
-   ============================================================ */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .em-panel, .donut-tooltip, .conn-pill, .glass, .card-head .tag,
-  .scope-badge, .btn, .slider, .field input[type=text], .toast, .tabbar {
-    backdrop-filter:none !important;
-    -webkit-backdrop-filter:none !important;
-  }
-  .glass       { background:linear-gradient(172deg,rgba(255,255,255,.92) 0%,rgba(255,255,255,.86) 35%,rgba(255,255,255,.82) 65%,rgba(255,255,255,.86) 85%,rgba(255,255,255,.90) 100%); }
-  .tabbar      { background:linear-gradient(172deg,rgba(255,255,255,.97) 0%,rgba(255,255,255,.93) 100%); }
-  .conn-pill   { background:rgba(20,24,22,.94); }
-  .toast       { background:rgba(16,20,18,.96); }
-  .scope-badge { background:rgba(8,8,10,.72); }
-  .donut-tooltip { background:rgba(16,20,18,.94); }
-  .em-panel    { background:rgba(10,4,4,.94); }
-  .card-head .tag,
-  .field input[type=text] { background:rgba(255,255,255,.94); }
+.loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca8a4;
+    pointer-events: none;
 }
-
-.scope { transform:translateZ(0); }
-
-/* ============================================================
-   BOOT → DASHBOARD TRANSITION
-   ============================================================ */
 
-/* Dashboard starts fully hidden while booting */
-body.booting .layout,
-body.booting .topbar,
-body.booting .tabbar,
-body.booting .conn-pill,
-body.booting .light-rays,
-body.booting .bokeh-layer {
-  opacity: 0;
-  pointer-events: none;
+.info {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
 }
 
-/* Glass cards: start hidden below, blur out */
-body.booting .glass {
-  opacity: 0;
-  transform: translateY(28px) scale(0.96);
-  filter: blur(8px);
-  will-change: opacity, transform, filter;
+.card {
+    background: #111715;
+    border: 1px solid #26302d;
+    border-radius: 16px;
+    padding: 16px;
 }
 
-/* Tabbar starts from below */
-body.booting .tabbar {
-  transform: translateX(-50%) translateY(32px);
+.card-title {
+    color: #8d9995;
+    font-size: 13px;
+    margin-bottom: 7px;
 }
-body.booting .conn-pill {
-  transform: translateY(-12px);
-}
-
-/* --- POST-BOOT TRANSITIONS --- */
 
-.layout, .topbar {
-  transition: opacity 0.6s cubic-bezier(.22,1,.36,1);
+.card-value {
+    font-size: 18px;
+    font-weight: 600;
 }
-.light-rays, .bokeh-layer {
-  transition: opacity 1.2s ease;
-}
 
-/* Glass cards animate up — filter left open for CA burst */
-.glass {
-  transition:
-    opacity 0.55s cubic-bezier(.22,1,.36,1),
-    transform 0.65s cubic-bezier(.22,1,.36,1),
-    filter 0.55s cubic-bezier(.22,1,.36,1),
-    box-shadow .45s cubic-bezier(.25,.46,.45,.94);
-}
+@media (max-width: 700px) {
 
-.tabbar {
-  transition:
-    opacity 0.55s cubic-bezier(.22,1,.36,1),
-    transform 0.65s cubic-bezier(.22,1,.36,1);
-}
+    body {
+        padding: 12px;
+    }
 
-.conn-pill {
-  transition:
-    opacity 0.5s cubic-bezier(.22,1,.36,1),
-    transform 0.6s cubic-bezier(.22,1,.36,1),
-    box-shadow .3s ease,
-    color .3s ease,
-    background .3s ease;
-}
+    .header {
+        margin-bottom: 12px;
+    }
 
-/* Revealed state */
-.glass.revealed {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  filter: blur(0);
-}
-.tabbar.revealed {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-.conn-pill.revealed {
-  opacity: 1;
-  transform: translateY(0);
-}
-.layout.revealed,
-.topbar.revealed {
-  opacity: 1;
-}
-.light-rays.revealed,
-.bokeh-layer.revealed {
-  opacity: 1;
-}
+    .title {
+        font-size: 22px;
+    }
 
+    .camera {
+        border-radius: 14px;
+    }
 
-/* ── Boot screen exit: soft fade + scale, no chromatic split ── */
-.boot-screen {
-  transform-origin: center center;
-  transition:
-    opacity 0.8s cubic-bezier(.22,1,.36,1),
-    transform 0.8s cubic-bezier(.22,1,.36,1),
-    filter 0.8s cubic-bezier(.22,1,.36,1);
+    .info {
+        grid-template-columns: 1fr;
+    }
 }
-.boot-screen.boot-out {
-  opacity: 0;
-  transform: scale(1.04);
-  filter: blur(6px);
-  pointer-events: none;
-}
-.boot-screen.boot-gone { display: none; }
-
 </style>
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
+
 </head>
-<body class="booting">
 
-<div class="boot-screen" id="bootScreen">
-  <div class="boot-grain"></div>
-  <div class="boot-chromatic">
-    <div class="boot-circle" id="bootCircle">
-      <div class="boot-shimmer"></div>
+<body>
+
+<div class="app">
+
+```
+<div class="header">
+
+    <div class="title">
+        Sentry
     </div>
-  </div>
+
+    <div class="status" id="status">
+        <span class="status-dot"></span>
+        <span id="statusText">Connecting...</span>
+    </div>
+
 </div>
 
 
+<div class="camera">
 
+    <img
+        id="stream"
+        alt="Live ESP32-CAM stream"
+    >
 
-<!-- SVG DEFS -->
-<svg style="position:absolute;width:0;height:0;overflow:hidden;" aria-hidden="true">
-  <defs>
+    <div
+        class="loading"
+        id="loading"
+    >
+        Connecting to camera...
+    </div>
 
-    <radialGradient id="holeGrad" cx="40%" cy="35%" r="65%">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.55)"/>
-      <stop offset="50%" stop-color="rgba(255,255,255,0.25)"/>
-      <stop offset="100%" stop-color="rgba(200,230,220,0.10)"/>
-    </radialGradient>
-  </defs>
-</svg>
-
-<!-- Light rays -->
-<div class="light-rays" aria-hidden="true">
-  <div class="ray" style="left:14%;--r:-16deg;--w:90px;--op:.055;--blur:10px;--dur:24s;--delay:-3s;--peak-op:.65;"></div>
-  <div class="ray" style="left:32%;--r:-11deg;--w:60px;--op:.040;--blur:14px;--dur:19s;--delay:-9s;--peak-op:.55;"></div>
-  <div class="ray" style="left:55%;--r:-8deg;--w:110px;--op:.048;--blur:16px;--dur:28s;--delay:-14s;--peak-op:.60;"></div>
-  <div class="ray" style="left:72%;--r:-20deg;--w:75px;--op:.038;--blur:12px;--dur:22s;--delay:-6s;--peak-op:.50;"></div>
-  <div class="ray" style="left:88%;--r:-13deg;--w:50px;--op:.032;--blur:18px;--dur:31s;--delay:-18s;--peak-op:.45;"></div>
 </div>
 
-<!-- Bokeh -->
-<div class="bokeh-layer" aria-hidden="true">
-  <div class="bokeh" style="left:8%;top:18%;width:140px;height:140px;--bo:.50;--bbo:.16;--bblur:1px;--bop:.22;--bd:25s;--bdelay:-4s;--bx1:18px;--by1:-12px;--bx2:-8px;--by2:20px;--bx3:10px;--by3:-6px;"></div>
-  <div class="bokeh" style="left:78%;top:8%;width:90px;height:90px;--bo:.45;--bbo:.12;--bblur:2px;--bop:.18;--bd:18s;--bdelay:-10s;--bx1:-14px;--by1:8px;--bx2:10px;--by2:-16px;--bx3:-6px;--by3:4px;"></div>
-  <div class="bokeh" style="left:88%;top:55%;width:65px;height:65px;--bo:.40;--bbo:.10;--bblur:3px;--bop:.14;--bd:22s;--bdelay:-7s;--bx1:8px;--by1:12px;--bx2:-10px;--by2:-8px;--bx3:6px;--by3:10px;"></div>
-  <div class="bokeh" style="left:4%;top:70%;width:110px;height:110px;--bo:.42;--bbo:.12;--bblur:1.5px;--bop:.16;--bd:30s;--bdelay:-16s;--bx1:12px;--by1:-18px;--bx2:-6px;--by2:12px;--bx3:8px;--by3:-8px;"></div>
-  <div class="bokeh" style="left:48%;top:82%;width:80px;height:80px;--bo:.38;--bbo:.10;--bblur:2.5px;--bop:.12;--bd:20s;--bdelay:-2s;--bx1:-10px;--by1:6px;--bx2:14px;--by2:-10px;--bx3:-4px;--by3:8px;"></div>
-  <div class="bokeh" style="left:60%;top:30%;width:50px;height:50px;--bo:.35;--bbo:.08;--bblur:4px;--bop:.10;--bd:16s;--bdelay:-11s;--bx1:6px;--by1:-8px;--bx2:-8px;--by2:10px;--bx3:4px;--by3:-4px;"></div>
+
+<div class="info">
+
+    <div class="card">
+        <div class="card-title">
+            CAMERA
+        </div>
+
+        <div class="card-value">
+            ESP32-CAM
+        </div>
+    </div>
+
+
+    <div class="card">
+        <div class="card-title">
+            AI
+        </div>
+
+        <div class="card-value">
+            YOLO Detection
+        </div>
+    </div>
+
+
+    <div class="card">
+        <div class="card-title">
+            STREAM
+        </div>
+
+        <div
+            class="card-value"
+            id="streamState"
+        >
+            Connecting...
+        </div>
+    </div>
+
 </div>
+```
 
-<!-- EMERGENCY OVERLAY -->
-<div class="emergency-overlay" id="emergencyOverlay" role="alertdialog" aria-modal="true" aria-label="Emergency Alert">
-  <div class="em-tint"></div>
-  <div class="em-border"></div>
-  <div class="em-flash-l"></div>
-  <div class="em-flash-r"></div>
-  <div class="em-radar"></div>
-  <div class="em-rings" id="emRings">
-    <div class="em-ring"></div>
-    <div class="em-ring"></div>
-    <div class="em-ring"></div>
-  </div>
-  <div class="em-panel">
-    <div class="em-icon-wrap" id="emIcon">⚠</div>
-    <div class="em-alarm-text">Hazard Alert</div>
-    <div class="em-hazard" id="emHazard">Fire Detected</div>
-    <div class="em-meta">
-      <span>Time: <strong id="emTime">—</strong></span>
-      <span>Confidence: <strong id="emConf">—</strong></span>
-    </div>
-    <div class="em-message" id="emMessage">High-confidence hazard detected. Please follow emergency protocols and evacuate if necessary.</div>
-    <button class="em-dismiss" onclick="dismissEmergency()">Acknowledge &amp; Dismiss</button>
-    <div class="em-timer" id="emTimer">Auto-dismissing in <span id="emCountdown">10</span>s</div>
-  </div>
-</div>
-
-<!-- Touch ripple -->
-<div class="touch-ripple" id="touchRipple"></div>
-
-<div class="layout">
-
-  <!-- LEFT SIDE PANEL -->
-  <aside class="side" id="sideLeftPanel">
-    <div class="glass">
-      <div class="glass-edge"></div>
-      <div class="side-brand">
-        <div class="mark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s7 7.5 7 12a7 7 0 0 1-14 0c0-4.5 7-12 7-12z"/></svg>
-        </div>
-        <div>
-          <div class="word">Sentry</div>
-          <div class="sub">Vision Warning System</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="glass analytics-card" id="analyticsCard">
-      <div class="glass-edge"></div>
-      <div class="card-head">
-        <h2 style="font-size:15px;">Analytics</h2>
-        <div class="tag" id="analyticsTag">Live</div>
-      </div>
-      <div class="donut-wrap" id="donutWrap">
-        <div class="donut-ring"></div>
-        <div class="donut-tooltip" id="donutTooltip">
-          <div class="tt-name" id="ttName">—</div>
-          <div class="tt-count" id="ttCount">0</div>
-          <div class="tt-pct" id="ttPct">0%</div>
-        </div>
-        <svg class="donut-svg" id="analyticsDonut" viewBox="0 0 140 140" aria-hidden="true">
-          <circle class="donut-track" cx="70" cy="70" r="52" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="18"/>
-          <circle class="donut-shimmer" cx="70" cy="70" r="52"/>
-          <g id="donutSegments"></g>
-          <circle cx="70" cy="70" r="38" class="donut-hole"/>
-          <circle cx="70" cy="70" r="38" class="donut-hole-sheen"/>
-          <ellipse cx="66" cy="58" rx="16" ry="8" fill="rgba(255,255,255,.45)"/>
-          <circle cx="70" cy="70" r="38" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="0.8"/>
-          <circle cx="70" cy="70" r="29" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="0.5"/>
-        </svg>
-        <div class="donut-center" id="donutCenter">
-          <span class="donut-total" id="donutTotal">0</span>
-          <span class="donut-sub">Total Events</span>
-        </div>
-        <div class="donut-empty" id="donutEmpty">
-          <span>No detections yet</span>
-        </div>
-      </div>
-      <div class="an-legend" id="analyticsLegend">
-        <div class="an-leg-row" data-type="fire" id="legFire">
-          <div class="an-dot" style="background:#ff3b30;box-shadow:0 0 5px rgba(255,59,48,.40);"></div>
-          <div class="an-leg-name">Fire</div>
-          <div class="an-leg-count" id="anCountFire">0</div>
-          <div class="an-leg-pct" id="anPctFire">—</div>
-        </div>
-        <div class="an-leg-row" data-type="smoke" id="legSmoke">
-          <div class="an-dot" style="background:#9a9a9e;"></div>
-          <div class="an-leg-name">Smoke</div>
-          <div class="an-leg-count" id="anCountSmoke">0</div>
-          <div class="an-leg-pct" id="anPctSmoke">—</div>
-        </div>
-        <div class="an-leg-row" data-type="flood" id="legFlood">
-          <div class="an-dot" style="background:#A3D1C6;box-shadow:0 0 5px rgba(163,209,198,.55);"></div>
-          <div class="an-leg-name">Flood</div>
-          <div class="an-leg-count" id="anCountFlood">0</div>
-          <div class="an-leg-pct" id="anPctFlood">—</div>
-        </div>
-        <div class="an-leg-row" data-type="landslide" id="legLandslide">
-          <div class="an-dot" style="background:#ff9f0a;box-shadow:0 0 5px rgba(255,159,10,.40);"></div>
-          <div class="an-leg-name">Landslide</div>
-          <div class="an-leg-count" id="anCountLandslide">0</div>
-          <div class="an-leg-pct" id="anPctLandslide">—</div>
-        </div>
-      </div>
-      <div class="an-meta">
-        <div class="an-meta-row" id="anMostDetected" style="display:none;">
-          <div class="an-meta-label">Most detected</div>
-          <div class="an-meta-val" id="anMostVal">—</div>
-        </div>
-        <div class="an-meta-row" id="anLastDetection" style="display:none;">
-          <div class="an-meta-label">Last detection</div>
-          <div class="an-meta-val" id="anLastVal">—</div>
-        </div>
-      </div>
-    </div>
-  </aside>
-
-  <!-- MAIN COLUMN -->
-  <div class="app">
-    <div class="topbar">
-      <div class="title-block">
-        <div class="eyebrow">Vision Warning System</div>
-        <h1 id="pageTitle">Dashboard</h1>
-      </div>
-      <div class="conn-pill offline" id="connPill">
-        <div class="conn-dot"></div>
-        <span id="connText">Offline</span>
-      </div>
-    </div>
-
-    <!-- HOME -->
-    <div class="view active" id="view-home">
-      <div class="glass" id="card-livefeed">
-        <div class="glass-edge"></div>
-        <div class="card-head">
-          <h2>Live Feed</h2>
-          <div class="tag" id="liveFeedTag">CAM 01</div>
-        </div>
-        <div class="scope" id="mainScope">
-         <img src="https://stream-flask-cdv9.onrender.com/stream" alt="Camera feed" width="800" height="600">
-          <div class="scope-offline" aria-hidden="true">
-            <div class="scope-offline-vignette"></div>
-            <div class="scope-offline-grain"></div>
-            <div class="scope-offline-sheen"></div>
-            <div class="scope-offline-shimmer"></div>
-            <div class="scope-offline-glow"></div>
-            <div class="scope-offline-dust">
-              <span style="top:22%;left:18%;animation-delay:.0s;animation-duration:7.5s;"></span>
-              <span style="top:64%;left:74%;animation-delay:1.2s;animation-duration:8.5s;"></span>
-              <span style="top:40%;left:52%;animation-delay:2.4s;animation-duration:6.5s;"></span>
-              <span style="top:78%;left:30%;animation-delay:3.6s;animation-duration:9s;"></span>
-              <span style="top:15%;left:82%;animation-delay:.6s;animation-duration:7s;"></span>
-              <span style="top:55%;left:12%;animation-delay:4.2s;animation-duration:8s;"></span>
-            </div>
-            <div class="scope-offline-content">
-              <div class="scope-offline-title">Camera Offline</div>
-              <div class="scope-offline-subtitle">Attempting to reconnect…</div>
-              <div class="scope-offline-ring"></div>
-            </div>
-          </div>
-          <div class="scope-reflection"></div>
-          <div class="scope-edge-light"></div>
-          <div class="scope-glow"></div>
-          <div class="scope-shimmer"></div>
-          <div class="scope-inner-glow"></div>
-          <div class="scope-corner tl"></div>
-          <div class="scope-corner tr"></div>
-          <div class="scope-corner bl"></div>
-          <div class="scope-corner br"></div>
-          <div class="scope-badge">LIVE</div>
-        </div>
-      </div>
-
-      <div class="glass" id="card-detection">
-        <div class="glass-edge"></div>
-        <div class="card-head">
-          <h2>Detection Status</h2>
-          <div class="tag" id="lastUpdateTag">No data yet</div>
-        </div>
-        <div class="chip-row">
-          <div class="chip fire"      id="chip-fire">
-            <div class="left"><div class="swatch"></div><div class="name">Fire</div></div>
-            <div class="reading" id="fireReading">No data</div>
-          </div>
-          <div class="chip smoke"     id="chip-smoke">
-            <div class="left"><div class="swatch"></div><div class="name">Smoke</div></div>
-            <div class="reading" id="smokeReading">No data</div>
-          </div>
-          <div class="chip flood"     id="chip-flood">
-            <div class="left"><div class="swatch"></div><div class="name">Flood</div></div>
-            <div class="reading" id="floodReading">No data</div>
-          </div>
-          <div class="chip landslide" id="chip-landslide">
-            <div class="left"><div class="swatch"></div><div class="name">Landslide</div></div>
-            <div class="reading" id="landslideReading">No data</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- CAMERA -->
-    <div class="view" id="view-camera">
-      <div class="glass">
-        <div class="glass-edge"></div>
-        <div class="card-head">
-          <h2>Camera</h2>
-          <div class="tag">CAM 01</div>
-        </div>
-        <div class="scope" id="cameraScope" style="aspect-ratio:4/3;">
-         <img src="https://stream-flask-cdv9.onrender.com/stream" alt="Camera feed" width="800" height="600">
-          <div class="scope-offline" aria-hidden="true">
-            <div class="scope-offline-vignette"></div>
-            <div class="scope-offline-grain"></div>
-            <div class="scope-offline-sheen"></div>
-            <div class="scope-offline-shimmer"></div>
-            <div class="scope-offline-glow"></div>
-            <div class="scope-offline-dust">
-              <span style="top:24%;left:20%;animation-delay:.3s;animation-duration:7.8s;"></span>
-              <span style="top:60%;left:70%;animation-delay:1.5s;animation-duration:8.2s;"></span>
-              <span style="top:42%;left:48%;animation-delay:2.7s;animation-duration:6.8s;"></span>
-              <span style="top:80%;left:34%;animation-delay:3.9s;animation-duration:9.2s;"></span>
-              <span style="top:18%;left:78%;animation-delay:.9s;animation-duration:7.2s;"></span>
-              <span style="top:52%;left:16%;animation-delay:4.5s;animation-duration:8.4s;"></span>
-            </div>
-            <div class="scope-offline-content">
-              <div class="scope-offline-title">Camera Offline</div>
-              <div class="scope-offline-subtitle">Attempting to reconnect…</div>
-              <div class="scope-offline-ring"></div>
-            </div>
-          </div>
-          <div class="scope-reflection"></div>
-          <div class="scope-edge-light"></div>
-          <div class="scope-glow"></div>
-          <div class="scope-shimmer"></div>
-          <div class="scope-inner-glow"></div>
-          <div class="scope-corner tl"></div>
-          <div class="scope-corner tr"></div>
-          <div class="scope-corner bl"></div>
-          <div class="scope-corner br"></div>
-          <div class="scope-badge">LIVE</div>
-        </div>
-        <div class="btn-row">
-          <button class="btn" onclick="snapshot()">
-            <span class="btn-streak"></span><div class="btn-edge"></div>Take Snapshot
-          </button>
-          <button class="btn ghost" onclick="reconnectCamera()">
-            <span class="btn-streak"></span><div class="btn-edge"></div>Reconnect
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ALERTS -->
-    <div class="view" id="view-alerts">
-      <div class="glass">
-        <div class="glass-edge"></div>
-        <div class="card-head"><h2>Notifications</h2></div>
-        <div class="row">
-          <div><div class="t-label">Alert notifications</div><div class="t-desc">Show a banner when Flask reports an event</div></div>
-          <label class="switch"><input type="checkbox" id="toggleNotify" checked><span class="slider"><span class="slider-ripple"></span></span></label>
-        </div>
-        <div class="row">
-          <div><div class="t-label">Sound</div><div class="t-desc">Play a tone when an event arrives</div></div>
-          <label class="switch"><input type="checkbox" id="toggleSound"><span class="slider"><span class="slider-ripple"></span></span></label>
-        </div>
-        <div class="row">
-          <div><div class="t-label">Auto-record</div><div class="t-desc">Mark incoming events as recorded automatically</div></div>
-          <label class="switch"><input type="checkbox" id="toggleRecord" checked><span class="slider"><span class="slider-ripple"></span></span></label>
-        </div>
-        <div class="row">
-          <div><div class="t-label">Emergency mode</div><div class="t-desc">Full-screen alarm for high-confidence events ≥ 70%</div></div>
-          <label class="switch"><input type="checkbox" id="toggleEmergency" checked><span class="slider"><span class="slider-ripple"></span></span></label>
-        </div>
-      </div>
-    </div>
-
-    <!-- HISTORY -->
-    <div class="view" id="view-history">
-      <div class="glass">
-        <div class="glass-edge"></div>
-        <div class="card-head">
-          <h2>Event History</h2>
-          <div class="tag" id="historyCount">0 events</div>
-        </div>
-        <div class="hlist" id="historyList">
-          <div class="empty">
-            <div class="big">📭</div>
-            Events sent from Flask will appear here automatically.
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- SETTINGS -->
-    <div class="view" id="view-settings">
-      <div class="glass">
-        <div class="glass-edge"></div>
-        <div class="card-head"><h2>Flask Connection</h2></div>
-        <div class="field">
-          <label>Events endpoint</label>
-          <input type="text" id="endpointInput" value="https://flask-m2om.onrender.com/events">
-          <div class="hint">Polled every 3 seconds. Expected response: a JSON array of objects like <code>{"id":1,"type":"fire","confidence":82,"timestamp":"2026-08-04T10:22:00"}</code>. Only unseen ids are recorded.</div>
-        </div>
-        <div class="btn-row">
-          <button class="btn" onclick="applyEndpoint()">
-            <span class="btn-streak"></span><div class="btn-edge"></div>Connect
-          </button>
-        </div>
-      </div>
-      <div class="glass">
-        <div class="glass-edge"></div>
-        <div class="card-head"><h2>Polling</h2></div>
-        <div class="row">
-          <div><div class="t-label">Status</div><div class="t-desc" id="pollStatusDesc">Not connected yet</div></div>
-        </div>
-      </div>
-    </div>
-  </div><!-- /app -->
-
-  <!-- RIGHT SIDE PANEL -->
-  <aside class="side" id="sideRightPanel">
-    <div class="glass" id="sideQuickGlance">
-      <div class="glass-edge"></div>
-      <div class="card-head"><h2 style="font-size:15px;">Quick Glance</h2></div>
-      <div class="quick-row">
-        <div class="k">Connection</div>
-        <div class="v offline" id="sideConnText">Offline</div>
-      </div>
-      <div class="quick-row">
-        <div class="k">Last update</div>
-        <div class="v" id="sideLastUpdate">No data yet</div>
-      </div>
-      <div class="quick-row">
-        <div class="k">Events logged</div>
-        <div class="v" id="sideEventCount">0</div>
-      </div>
-    </div>
-    <div class="glass" id="sideRecentCard">
-      <div class="glass-edge"></div>
-      <div class="card-head"><h2 style="font-size:15px;">Recent Events</h2></div>
-      <div class="mini-hlist" id="sideHistoryList">
-        <div class="mini-empty">Nothing yet — events will show up here.</div>
-      </div>
-    </div>
-  </aside>
-
-</div><!-- /layout -->
-
-<!-- Toast -->
-<div class="toast" id="toast">
-  <div class="dot"></div>
-  <span id="toastText"></span>
-</div>
-
-<!-- Tab bar — always visible, always centred, only opacity changes during boot -->
-<div class="tabbar" id="tabbar">
-  <div class="tabbar-depth"></div>
-  <div class="tab-indicator" id="tabIndicator"></div>
-  <button class="tab active" data-view="home" data-title="Dashboard">
-    <div class="ic-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg></div>
-    <span>Home</span>
-  </button>
-  <button class="tab" data-view="camera" data-title="Camera">
-    <div class="ic-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3"/></svg></div>
-    <span>Camera</span>
-  </button>
-  <button class="tab" data-view="alerts" data-title="Alerts">
-    <div class="ic-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
-    <span>Alerts</span>
-  </button>
-  <button class="tab" data-view="history" data-title="History">
-    <div class="ic-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
-    <span>History</span>
-  </button>
-  <button class="tab" data-view="settings" data-title="Settings">
-    <div class="ic-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
-    <span>Settings</span>
-  </button>
 </div>
 
 <script>
-/* ============================================================
-   CAPABILITY DETECTION
-   ============================================================ */
-const isCoarsePointer = window.matchMedia('(hover:none),(pointer:coarse)').matches;
-const hasHover = !isCoarsePointer && window.matchMedia('(hover:hover) and (pointer:fine)').matches;
-const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 
-/* ============================================================
-   EMERGENCY AUDIO ENGINE
-   ============================================================ */
-let sirenCtx = null;
-let sirenNodes = [];
+const STREAM_URL =
+    "https://stream-flask-cdv9.onrender.com/frame";
 
-function createSiren() {
-  if (!document.getElementById('toggleEmergency').checked) return;
-  try {
-    sirenCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const masterGain = sirenCtx.createGain();
-    masterGain.gain.setValueAtTime(0.001, sirenCtx.currentTime);
-    masterGain.gain.linearRampToValueAtTime(0.28, sirenCtx.currentTime + 0.4);
-    masterGain.connect(sirenCtx.destination);
-    sirenNodes.push(masterGain);
-    const now = sirenCtx.currentTime;
-    const CYCLE = 0.9, TOTAL = 10;
-    for (let i = 0; i < TOTAL / CYCLE; i++) {
-      const t = now + i * CYCLE;
-      const osc1 = sirenCtx.createOscillator();
-      osc1.type = 'sawtooth';
-      osc1.frequency.setValueAtTime(660, t);
-      osc1.frequency.linearRampToValueAtTime(880, t + CYCLE * 0.5);
-      osc1.frequency.linearRampToValueAtTime(660, t + CYCLE);
-      const g1 = sirenCtx.createGain();
-      g1.gain.setValueAtTime(0.18, t);
-      const filter = sirenCtx.createBiquadFilter();
-      filter.type = 'bandpass'; filter.frequency.value = 800; filter.Q.value = 1.5;
-      osc1.connect(filter).connect(g1).connect(masterGain);
-      osc1.start(t); osc1.stop(t + CYCLE);
-      sirenNodes.push(osc1, g1, filter);
-      const osc2 = sirenCtx.createOscillator();
-      osc2.type = 'square';
-      osc2.frequency.setValueAtTime(440, t);
-      osc2.frequency.linearRampToValueAtTime(600, t + CYCLE * 0.5);
-      const g2 = sirenCtx.createGain();
-      g2.gain.setValueAtTime(0.06, t);
-      osc2.connect(g2).connect(masterGain);
-      osc2.start(t); osc2.stop(t + CYCLE);
-      sirenNodes.push(osc2, g2);
-    }
-    masterGain.gain.linearRampToValueAtTime(0.28, now + TOTAL - 1.5);
-    masterGain.gain.linearRampToValueAtTime(0.001, now + TOTAL);
-    setTimeout(() => stopSiren(), TOTAL * 1000);
-  } catch(e) { console.log('Audio error:', e); }
+const img =
+    document.getElementById("stream");
+
+const status =
+    document.getElementById("status");
+
+const statusText =
+    document.getElementById("statusText");
+
+const loading =
+    document.getElementById("loading");
+
+const streamState =
+    document.getElementById("streamState");
+
+
+let timer = null;
+
+
+/*
+    Because /frame returns the newest JPEG,
+    repeatedly request it with a cache-busting
+    parameter.
+*/
+
+function loadFrame() {
+
+    const url =
+        STREAM_URL +
+        "?t=" +
+        Date.now();
+
+    img.onload = function () {
+
+        loading.style.display = "none";
+
+        status.classList.add("online");
+
+        statusText.textContent =
+            "Live";
+
+        streamState.textContent =
+            "Connected";
+
+        /*
+            Immediately request the next frame.
+        */
+
+        timer = setTimeout(
+            loadFrame,
+            80
+        );
+    };
+
+
+    img.onerror = function () {
+
+        status.classList.remove("online");
+
+        statusText.textContent =
+            "Offline";
+
+        streamState.textContent =
+            "Disconnected";
+
+        loading.textContent =
+            "Camera unavailable";
+
+        loading.style.display =
+            "flex";
+
+
+        /*
+            Retry after a short delay.
+        */
+
+        timer = setTimeout(
+            loadFrame,
+            1000
+        );
+    };
+
+
+    img.src = url;
 }
 
-function stopSiren() {
-  if (sirenCtx) { try { sirenCtx.close(); } catch(e) {} sirenCtx = null; sirenNodes = []; }
-}
 
-/* ============================================================
-   EMERGENCY MODE
-   ============================================================ */
-let emergencyActive = false;
-let emergencyTimer = null;
-let emergencyCountdown = null;
+loadFrame();
 
-function triggerEmergency(evt) {
-  if (emergencyActive) return;
-  emergencyActive = true;
-  document.body.classList.add('shaking');
-  setTimeout(() => document.body.classList.remove('shaking'), 600);
-  document.body.classList.add('emergency');
-  document.querySelectorAll('.glass').forEach(g => g.classList.add('emergency-tint'));
-  document.querySelectorAll('.scope').forEach(s => s.classList.add('emergency-cam'));
-  const pill = document.getElementById('connPill');
-  pill.classList.add('emergency');
-  document.getElementById('connText').textContent = 'Emergency';
-  const tag = document.getElementById('lastUpdateTag');
-  tag.classList.add('emergency-tag'); tag.textContent = '⚠ ALARM';
-  const icons = { fire:'🔥', smoke:'💨', flood:'💧', landslide:'⛰️' };
-  document.getElementById('emIcon').textContent = icons[evt.type] || '⚠️';
-  document.getElementById('emHazard').textContent = (evt.type[0].toUpperCase() + evt.type.slice(1)) + ' Detected';
-  document.getElementById('emTime').textContent = new Date(evt.timestamp).toLocaleTimeString();
-  document.getElementById('emConf').textContent = evt.confidence + '%';
-  const messages = {
-    fire:      'Fire detected with high confidence. Activate fire suppression, alert occupants, and evacuate if necessary.',
-    smoke:     'Smoke detected. Check for a fire source immediately and prepare for evacuation.',
-    flood:     'Flood conditions detected. Move to higher ground and avoid affected areas.',
-    landslide: 'Landslide risk detected. Evacuate steep slopes and follow emergency protocols.'
-  };
-  document.getElementById('emMessage').textContent = messages[evt.type] || 'High-confidence hazard detected. Follow emergency protocols.';
-  document.getElementById('emergencyOverlay').classList.add('active');
-  createSiren();
-  if (Notification && Notification.permission === 'granted') {
-    try { new Notification('⚠️ ' + evt.type.toUpperCase() + ' DETECTED', { body: evt.confidence + '% confidence · ' + new Date(evt.timestamp).toLocaleTimeString(), tag: 'sentry-emergency', requireInteraction: true }); } catch(e) {}
-  } else if (Notification && Notification.permission !== 'denied') { Notification.requestPermission(); }
-  if (navigator.vibrate) { try { navigator.vibrate([220, 100, 220, 100, 400]); } catch(e) {} }
-  let secs = 10;
-  document.getElementById('emCountdown').textContent = secs;
-  emergencyCountdown = setInterval(() => {
-    secs--;
-    const el = document.getElementById('emCountdown');
-    if (el) el.textContent = secs;
-    if (secs <= 0) { clearInterval(emergencyCountdown); dismissEmergency(); }
-  }, 1000);
-}
-
-function dismissEmergency() {
-  if (!emergencyActive) return;
-  clearInterval(emergencyCountdown); stopSiren();
-  document.getElementById('emergencyOverlay').classList.remove('active');
-  document.body.classList.remove('emergency');
-  document.querySelectorAll('.glass').forEach(g => g.classList.remove('emergency-tint'));
-  document.querySelectorAll('.scope').forEach(s => s.classList.remove('emergency-cam'));
-  const pill = document.getElementById('connPill');
-  pill.classList.remove('emergency');
-  setConnState(EVENTS_URL && pill.classList.contains('online'));
-  const tag = document.getElementById('lastUpdateTag');
-  tag.classList.remove('emergency-tag');
-  emergencyActive = false;
-}
-
-/* ============================================================
-   DEVICE TILT (mobile)
-   ============================================================ */
-if (!hasHover && !prefersReducedMotion && window.DeviceOrientationEvent) {
-  let tiltPermissionAsked = false;
-  const requestTilt = () => {
-    if (tiltPermissionAsked) return; tiltPermissionAsked = true;
-    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-      DeviceOrientationEvent.requestPermission().then(s => { if (s === 'granted') listenTilt(); }).catch(()=>{});
-    } else { listenTilt(); }
-  };
-  document.addEventListener('touchstart', requestTilt, { once: true });
-  function listenTilt() {
-    let lB = 0, lG = 0;
-    window.addEventListener('deviceorientation', e => {
-      const b = Math.max(-20, Math.min(20, (e.beta || 0) - 20));
-      const g = Math.max(-20, Math.min(20, e.gamma || 0));
-      lB = lB * .85 + b * .15; lG = lG * .85 + g * .15;
-      document.querySelectorAll('.glass').forEach(card => {
-        card.style.transform = `perspective(900px) rotateX(${-lB*.06}deg) rotateY(${lG*.06}deg)`;
-        card.style.setProperty('--mx', (50 + lG * 1.8) + '%');
-        card.style.setProperty('--my', (50 + lB * 1.2) + '%');
-      });
-      document.querySelectorAll('.chip').forEach(c => {
-        c.style.transform = `translate(${lG * 0.3}px, ${lB * 0.15}px)`;
-      });
-    }, { passive: true });
-  }
-}
-
-document.addEventListener('touchstart', e => {
-  const r = document.getElementById('touchRipple');
-  const touch = e.touches[0];
-  r.style.left = touch.clientX + 'px'; r.style.top = touch.clientY + 'px';
-  r.classList.remove('active'); void r.offsetWidth; r.classList.add('active');
-}, { passive: true });
-
-/* ============================================================
-   CURSOR PARALLAX & 3D TILT (desktop)
-   ============================================================ */
-if (hasHover && !prefersReducedMotion) {
-  document.querySelectorAll('.glass').forEach(card => {
-    let mx = 50, my = 10, txT = 0, tyT = 0, tx = 0, ty = 0, raf = null;
-    const lerp = (a, b, t) => a + (b - a) * t;
-    card.addEventListener('mousemove', e => {
-      const r = card.getBoundingClientRect();
-      mx = (e.clientX - r.left) / r.width * 100; my = (e.clientY - r.top) / r.height * 100;
-      txT = ((e.clientX - r.left) / r.width - 0.5) * 2.8;
-      tyT = ((e.clientY - r.top) / r.height - 0.5) * 2.8;
-      card.style.setProperty('--mx', mx + '%'); card.style.setProperty('--my', my + '%');
-      if (!raf) {
-        const animate = () => {
-          tx = lerp(tx, txT, 0.12); ty = lerp(ty, tyT, 0.12);
-          card.style.transform = `perspective(900px) rotateX(${-ty}deg) rotateY(${tx}deg) translateY(-2px)`;
-          if (Math.abs(tx - txT) > .01 || Math.abs(ty - tyT) > .01) raf = requestAnimationFrame(animate); else raf = null;
-        };
-        raf = requestAnimationFrame(animate);
-      }
-    });
-    card.addEventListener('mouseleave', () => {
-      if (raf) { cancelAnimationFrame(raf); raf = null; }
-      txT = 0; tyT = 0;
-      const snap = () => {
-        tx = lerp(tx, 0, .10); ty = lerp(ty, 0, .10);
-        card.style.transform = `perspective(900px) rotateX(${-ty}deg) rotateY(${tx}deg)`;
-        if (Math.abs(tx) > .01 || Math.abs(ty) > .01) raf = requestAnimationFrame(snap);
-        else { card.style.transform = ''; raf = null; }
-      };
-      raf = requestAnimationFrame(snap);
-      card.style.setProperty('--mx', '50%'); card.style.setProperty('--my', '10%');
-    });
-  });
-}
-
-const tabbar = document.getElementById('tabbar');
-if (hasHover && tabbar) {
-  tabbar.addEventListener('mousemove', e => {
-    const r = tabbar.getBoundingClientRect();
-    tabbar.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
-    tabbar.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
-  });
-}
-
-/* ============================================================
-   NAVIGATION
-   ============================================================ */
-const tabs = document.querySelectorAll('.tab');
-const indicator = document.getElementById('tabIndicator');
-let indicatorAnimId = 0;
-
-function placeIndicatorInstant(tab) {
-  const br = tabbar.getBoundingClientRect();
-  const tr = tab.getBoundingClientRect();
-  indicator.style.transition = 'none';
-  indicator.style.left = (tr.left - br.left) + 'px';
-  indicator.style.width = tr.width + 'px';
-}
-
-function morphIndicator(tab) {
-  const br = tabbar.getBoundingClientRect();
-  const tr = tab.getBoundingClientRect();
-  const newL = tr.left - br.left, newW = tr.width;
-  const curL = indicator.offsetLeft, curW = indicator.offsetWidth;
-  if (Math.abs(curL - newL) < 0.5 && Math.abs(curW - newW) < 0.5) return;
-  const sL = Math.min(curL, newL), sW = Math.max(curL + curW, newL + newW) - sL;
-  const id = ++indicatorAnimId;
-  indicator.style.transition = 'left .16s cubic-bezier(.3,0,.15,1),width .16s cubic-bezier(.3,0,.15,1)';
-  indicator.style.left = sL + 'px'; indicator.style.width = sW + 'px';
-  setTimeout(() => {
-    if (id !== indicatorAnimId) return;
-    indicator.style.transition = 'left .46s cubic-bezier(.34,1.56,.64,1),width .46s cubic-bezier(.34,1.56,.64,1)';
-    indicator.style.left = newL + 'px'; indicator.style.width = newW + 'px';
-  }, 155);
-}
-
-tabs.forEach(tab => {
-  tab.addEventListener('click', () => {
-    tabs.forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    document.getElementById('view-' + tab.dataset.view).classList.add('active');
-    document.getElementById('pageTitle').textContent = tab.dataset.title;
-    morphIndicator(tab);
-  });
-});
-
-function initIndicator() { placeIndicatorInstant(document.querySelector('.tab.active')); }
-if (document.readyState === 'complete') initIndicator();
-else window.addEventListener('load', initIndicator);
-window.addEventListener('resize', () => placeIndicatorInstant(document.querySelector('.tab.active')));
-
-/* ============================================================
-   SWITCH ANIMATIONS
-   ============================================================ */
-document.querySelectorAll('.switch input').forEach(inp => {
-  const slider = inp.nextElementSibling;
-  const ripple = slider.querySelector('.slider-ripple');
-  const sw = inp.closest('.switch');
-  const press = (e) => {
-    slider.classList.add('pressing');
-    if (ripple && e) {
-      const r = slider.getBoundingClientRect();
-      const x = ((e.clientX || (e.touches && e.touches[0].clientX) || r.left + r.width / 2) - r.left) / r.width * 100;
-      slider.style.setProperty('--ripple-x', x + '%');
-    }
-  };
-  const release = () => {
-    slider.classList.remove('pressing');
-    if (ripple) { ripple.classList.remove('rippling'); void ripple.offsetWidth; ripple.classList.add('rippling'); setTimeout(() => ripple.classList.remove('rippling'), 450); }
-  };
-  inp.addEventListener('pointerdown', press);
-  inp.addEventListener('pointerup', release);
-  inp.addEventListener('pointerleave', () => slider.classList.remove('pressing'));
-  inp.addEventListener('touchend', release);
-  inp.addEventListener('change', () => {
-    sw.classList.remove('toggling'); void sw.offsetWidth; sw.classList.add('toggling');
-    sw.addEventListener('animationend', () => sw.classList.remove('toggling'), { once: true });
-  });
-});
-
-/* ============================================================
-   TOAST
-   ============================================================ */
-let toastTimer;
-function showToast(text, critical) {
-  const el = document.getElementById('toast');
-  document.getElementById('toastText').textContent = text;
-  el.classList.toggle('critical', !!critical);
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
-}
-
-/* ============================================================
-   SOUND
-   ============================================================ */
-function beep(critical) {
-  if (!document.getElementById('toggleSound').checked) return;
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass'; filter.frequency.value = critical ? 3400 : 2600;
-    filter.connect(ctx.destination);
-    function tone(freq, start, dur, peak) {
-      const osc = ctx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = freq;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, ctx.currentTime + start);
-      g.gain.exponentialRampToValueAtTime(peak, ctx.currentTime + start + 0.015);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
-      osc.connect(g).connect(filter); osc.start(ctx.currentTime + start); osc.stop(ctx.currentTime + start + dur + 0.05);
-    }
-    if (critical) { tone(987.77, 0, .15, .24); tone(987.77, .13, .15, .24); tone(1318.5, .26, .26, .26); }
-    else          { tone(1046.5, 0, .22, .16); tone(1567.98, .15, .30, .18); }
-  } catch(e) {}
-}
-
-/* ============================================================
-   DASHBOARD REFRESH ANIMATIONS
-   ============================================================ */
-function sweepCard(card) {
-  if (prefersReducedMotion || !card) return;
-  card.classList.remove('refreshing', 'card-flash'); void card.offsetWidth;
-  card.classList.add('refreshing', 'card-flash');
-  setTimeout(() => {
-    card.classList.remove('refreshing', 'card-flash');
-  }, 700);
-}
-
-function animateConnectBadge() {
-  const pill = document.getElementById('connPill');
-  if (prefersReducedMotion || emergencyActive) return;
-  pill.style.transition = 'all .3s cubic-bezier(.34,1.56,.64,1)';
-  pill.style.transform = 'scale(1.08)';
-  setTimeout(() => { pill.style.transform = ''; }, 350);
-}
-
-function animateScopeShimmer(scopeEl) {
-  if (!scopeEl || prefersReducedMotion) return;
-  scopeEl.classList.remove('shimmering'); void scopeEl.offsetWidth;
-  scopeEl.classList.add('shimmering');
-  setTimeout(() => scopeEl.classList.remove('shimmering'), 700);
-}
-
-function animateCount(el, from, to, duration) {
-  if (prefersReducedMotion) { el.textContent = to; return; }
-  const start = performance.now();
-  function frame(now) {
-    const t = Math.min((now - start) / duration, 1);
-    const ease = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2;
-    el.textContent = Math.round(from + (to - from) * ease);
-    if (t < 1) requestAnimationFrame(frame); else el.textContent = to;
-  }
-  requestAnimationFrame(frame);
-}
-
-/* ============================================================
-   DONUT CHART ENGINE
-   ============================================================ */
-const DONUT_R = 52, DONUT_CX = 70, DONUT_CY = 70, DONUT_CIRC = 2 * Math.PI * DONUT_R, GAP = 2.5;
-const SEG_COLORS = { fire:'#ff3b30', smoke:'#9a9a9e', flood:'#A3D1C6', landslide:'#ff9f0a' };
-const SEG_ORDER = ['fire','smoke','flood','landslide'];
-const SEG_ICONS = { fire:'🔥', smoke:'💨', flood:'💧', landslide:'⛰️' };
-let lastTotal = 0, donutRafId = null;
-
-function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
-function easeOutElastic(t) {
-  if (t === 0 || t === 1) return t;
-  return Math.pow(2,-10*t)*Math.sin((t*10-.75)*(2*Math.PI/2.8))+1;
-}
-
-function buildSegments(counts, total, progress) {
-  const segsEl = document.getElementById('donutSegments');
-  if (!segsEl) return;
-  if (total === 0) { segsEl.innerHTML = ''; return; }
-  let frag = '', offsetAccum = 0;
-  SEG_ORDER.forEach(type => {
-    const count = counts[type] || 0; if (!count) return;
-    const fraction = count / total;
-    const segLen = fraction * DONUT_CIRC * progress - GAP;
-    if (segLen <= 0) return;
-    const color = SEG_COLORS[type];
-    frag += `<circle class="donut-seg ${type}" cx="${DONUT_CX}" cy="${DONUT_CY}" r="${DONUT_R}" stroke="${color}" stroke-dasharray="${segLen} ${DONUT_CIRC-segLen}" stroke-dashoffset="${-offsetAccum}" style="filter:drop-shadow(0 0 4px ${color}55);"/>`;
-    const hl = Math.min(5, segLen * 0.12);
-    if (hl > 0.5) frag += `<circle cx="${DONUT_CX}" cy="${DONUT_CY}" r="${DONUT_R}" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="18" stroke-linecap="round" stroke-dasharray="${hl} ${DONUT_CIRC-hl}" stroke-dashoffset="${-(offsetAccum+segLen-hl)}" pointer-events="none"/>`;
-    offsetAccum += fraction * DONUT_CIRC * progress;
-  });
-  segsEl.innerHTML = frag;
-}
-
-function animateFill(counts, total, fromProg, toProg) {
-  if (donutRafId) cancelAnimationFrame(donutRafId);
-  let start = null; const DUR = 1400;
-  function frame(ts) {
-    if (!start) start = ts;
-    const t = Math.min((ts - start) / DUR, 1);
-    let eased = t < 0.7 ? easeInOutCubic(t/0.7)*0.85 : 0.85 + easeOutElastic((t-0.7)/0.3)*0.15;
-    const prog = fromProg + (toProg - fromProg) * eased;
-    buildSegments(counts, total, prog);
-    const display = Math.round(total * prog);
-    const el = document.getElementById('donutTotal');
-    if (el) el.textContent = display;
-    if (t < 1) donutRafId = requestAnimationFrame(frame);
-    else { buildSegments(counts, total, toProg); if (el) el.textContent = total; donutRafId = null; }
-  }
-  donutRafId = requestAnimationFrame(frame);
-}
-
-function computeAnalyticsCounts() {
-  const counts = { fire:0, smoke:0, flood:0, landslide:0 };
-  events.forEach(e => { if (counts[e.type] !== undefined) counts[e.type]++; });
-  return { counts, total: events.length };
-}
-
-function updateAnalytics() {
-  const { counts, total } = computeAnalyticsCounts();
-  const isEmpty = total === 0;
-  document.getElementById('donutEmpty').classList.toggle('show', isEmpty);
-  document.getElementById('donutCenter').classList.toggle('hide', isEmpty);
-  if (isEmpty) {
-    document.getElementById('donutSegments').innerHTML = '';
-    document.getElementById('donutTotal').textContent = '0';
-    document.getElementById('anMostDetected').style.display = 'none';
-    document.getElementById('anLastDetection').style.display = 'none';
-    SEG_ORDER.forEach(t => {
-      const c = t[0].toUpperCase()+t.slice(1);
-      document.getElementById('anCount'+c).textContent = '0';
-      document.getElementById('anPct'+c).textContent = '—';
-    });
-    return;
-  }
-  const isNew = total !== lastTotal;
-  const fromP = lastTotal === 0 ? 0 : 1;
-  lastTotal = total;
-  if (isNew && !prefersReducedMotion) animateFill(counts, total, fromP, 1);
-  else { buildSegments(counts, total, 1); document.getElementById('donutTotal').textContent = total; }
-  SEG_ORDER.forEach(type => {
-    const cap = type[0].toUpperCase()+type.slice(1);
-    const cnt = counts[type], pct = total > 0 ? Math.round(cnt/total*100) : 0;
-    const cEl = document.getElementById('anCount'+cap);
-    const pEl = document.getElementById('anPct'+cap);
-    if (cEl) cEl.textContent = cnt;
-    if (pEl) pEl.textContent = cnt > 0 ? pct+'%' : '—';
-  });
-  const mostType = SEG_ORDER.reduce((a,b) => counts[a] >= counts[b] ? a : b);
-  if (counts[mostType] > 0) {
-    document.getElementById('anMostDetected').style.display = 'flex';
-    const el = document.getElementById('anMostVal');
-    el.textContent = SEG_ICONS[mostType]+' '+mostType[0].toUpperCase()+mostType.slice(1);
-    el.classList.remove('updating'); void el.offsetWidth; el.classList.add('updating');
-  }
-  if (events.length > 0) {
-    const last = events[0];
-    document.getElementById('anLastDetection').style.display = 'flex';
-    const el = document.getElementById('anLastVal');
-    el.textContent = (last.type[0].toUpperCase()+last.type.slice(1))+' · '+new Date(last.timestamp).toLocaleTimeString();
-    el.classList.remove('updating'); void el.offsetWidth; el.classList.add('updating');
-  }
-}
-
-function setupDonutHover() {
-  const svg = document.getElementById('analyticsDonut');
-  const tooltip = document.getElementById('donutTooltip');
-  const wrap = document.getElementById('donutWrap');
-  if (!svg || !tooltip) return;
-  svg.addEventListener('mousemove', e => {
-    const { counts, total } = computeAnalyticsCounts();
-    if (!total) return;
-    const r = svg.getBoundingClientRect();
-    const cx = r.left + r.width/2, cy = r.top + r.height/2;
-    const dx = e.clientX - cx, dy = e.clientY - cy;
-    const dist = Math.sqrt(dx*dx+dy*dy);
-    const sc = r.width/140;
-    if (dist < 38*sc || dist > (52+9)*sc) { tooltip.classList.remove('show'); return; }
-    let angle = Math.atan2(dy,dx) + Math.PI/2;
-    if (angle < 0) angle += 2*Math.PI;
-    const fraction = angle / (2*Math.PI);
-    let accum = 0, hovType = null;
-    for (const type of SEG_ORDER) {
-      const cnt = counts[type]||0; if (!cnt) continue;
-      accum += cnt/total; if (fraction <= accum) { hovType = type; break; }
-    }
-    if (!hovType) { tooltip.classList.remove('show'); return; }
-    const cnt = counts[hovType], pct = Math.round(cnt/total*100);
-    document.getElementById('ttName').textContent = hovType[0].toUpperCase()+hovType.slice(1);
-    document.getElementById('ttCount').textContent = cnt;
-    document.getElementById('ttCount').style.color = SEG_COLORS[hovType];
-    document.getElementById('ttPct').textContent = pct+'%';
-    const wr = wrap.getBoundingClientRect();
-    tooltip.style.left = Math.max(0, e.clientX-wr.left-tooltip.offsetWidth/2)+'px';
-    tooltip.style.top = (e.clientY-wr.top-80)+'px';
-    tooltip.classList.add('show');
-    document.querySelectorAll('.an-leg-row').forEach(row => row.classList.toggle('highlighted', row.dataset.type===hovType));
-  });
-  svg.addEventListener('mouseleave', () => {
-    tooltip.classList.remove('show');
-    document.querySelectorAll('.an-leg-row').forEach(row => row.classList.remove('highlighted'));
-  });
-}
-setupDonutHover();
-
-document.querySelectorAll('.an-leg-row').forEach(row => {
-  row.addEventListener('mouseenter', () => {
-    const type = row.dataset.type;
-    document.querySelectorAll('.donut-seg').forEach(seg => { seg.style.opacity = seg.classList.contains(type)?'1':'0.28'; });
-  });
-  row.addEventListener('mouseleave', () => {
-    document.querySelectorAll('.donut-seg').forEach(seg => { seg.style.opacity='1'; });
-  });
-});
-
-/* ============================================================
-   EVENT HISTORY
-   ============================================================ */
-let events = [];
-let seenIds = new Set();
-let firstPoll = true;
-renderHistory();
-
-function iconFor(type) {
-  if (type==='fire') return '🔥';
-  if (type==='smoke') return '💨';
-  if (type==='flood') return '💧';
-  if (type==='landslide') return '⛰️';
-  return '•';
-}
-
-function renderHistory(newEvtType) {
-  const list = document.getElementById('historyList');
-  const tag = document.getElementById('historyCount');
-  tag.textContent = events.length + ' event' + (events.length===1?'':'s');
-  if (events.length === 0) {
-    list.innerHTML = '<div class="empty"><div class="big">📭</div>Events sent from Flask will appear here automatically.</div>';
-  } else {
-    list.innerHTML = events.map((e, i) => `
-      <div class="hitem ${e.type}${i===0&&newEvtType?' glowing':''}">
-        <div class="ico">${iconFor(e.type)}</div>
-        <div class="body">
-          <div class="top">
-            <span class="kind">${e.type}</span>
-            <span class="time">${new Date(e.timestamp).toLocaleTimeString()}</span>
-          </div>
-          <div class="meta">${e.confidence}% confidence${e.recorded?' · Auto-recorded':''}</div>
-        </div>
-      </div>`).join('');
-  }
-  const sideCount = document.getElementById('sideEventCount');
-  if (sideCount) {
-    const prev = parseInt(sideCount.textContent) || 0;
-    if (events.length !== prev && !prefersReducedMotion) {
-      animateCount(sideCount, prev, events.length, 500);
-      sideCount.classList.remove('side-count-pulse'); void sideCount.offsetWidth; sideCount.classList.add('side-count-pulse');
-    } else { sideCount.textContent = events.length; }
-  }
-  const sideList = document.getElementById('sideHistoryList');
-  if (sideList) {
-    sideList.innerHTML = events.length === 0
-      ? '<div class="mini-empty">Nothing yet — events will show up here.</div>'
-      : events.slice(0,5).map(e => `<div class="mini-hitem"><div class="ico">${iconFor(e.type)}</div><div class="kind">${e.type}</div><div class="conf">${e.confidence}%</div></div>`).join('');
-  }
-  updateAnalytics();
-  if (newEvtType) {
-    sweepCard(document.getElementById('sideQuickGlance'));
-    setTimeout(() => sweepCard(document.getElementById('sideRecentCard')), 80);
-  }
-}
-
-function updateStatusChip(type, confidence, timestamp) {
-  const readingEl = document.getElementById(type+'Reading');
-  if (!readingEl) return;
-  readingEl.textContent = confidence+'%';
-  readingEl.classList.toggle('hot', confidence >= 60);
-  if (!prefersReducedMotion) { readingEl.classList.remove('counting'); void readingEl.offsetWidth; readingEl.classList.add('counting'); }
-  const chip = document.getElementById('chip-'+type);
-  if (chip && !prefersReducedMotion) {
-    chip.classList.remove('pulsing'); void chip.offsetWidth; chip.classList.add('pulsing');
-    setTimeout(() => chip.classList.remove('pulsing'), 700);
-  }
-  const label = 'Updated '+new Date(timestamp).toLocaleTimeString();
-  document.getElementById('lastUpdateTag').textContent = label;
-  const sU = document.getElementById('sideLastUpdate');
-  if (sU) sU.textContent = label;
-}
-
-function recordEvent(evt) {
-  const recorded = document.getElementById('toggleRecord').checked;
-  events.unshift({ ...evt, recorded });
-  events = events.slice(0, 100);
-  sweepCard(document.getElementById('card-detection'));
-  animateScopeShimmer(document.getElementById('mainScope'));
-  renderHistory(evt.type);
-  updateStatusChip(evt.type, evt.confidence, evt.timestamp);
-  const notify = document.getElementById('toggleNotify').checked;
-  const critical = evt.confidence >= 60;
-  if (notify) showToast(`${evt.type[0].toUpperCase()+evt.type.slice(1)} detected · ${evt.confidence}%`, critical);
-  beep(critical);
-  if (evt.confidence >= 70 && document.getElementById('toggleEmergency').checked) triggerEmergency(evt);
-}
-
-/* ============================================================
-   FLASK POLLING
-   ============================================================ */
-let EVENTS_URL, pollTimer = null, wasOnline = false;
-
-function setConnState(online) {
-  if (emergencyActive) return;
-  const pill = document.getElementById('connPill');
-  pill.classList.toggle('online', online);
-  pill.classList.toggle('offline', !online);
-  document.getElementById('connText').textContent = online ? 'Connected' : 'Offline';
-  document.getElementById('pollStatusDesc').textContent = online
-    ? `Connected · polling ${EVENTS_URL}`
-    : `Waiting to reach ${EVENTS_URL || '(no endpoint set)'}`;
-  const sideConn = document.getElementById('sideConnText');
-  if (sideConn) {
-    sideConn.textContent = online ? 'Connected' : 'Offline';
-    sideConn.classList.toggle('online', online);
-    sideConn.classList.toggle('offline', !online);
-  }
-  if (online && !wasOnline) {
-    if (!bootFinished) { flaskConnected = true; wasOnline = online; return; }
-    if (syncAnimationPlayed) { wasOnline = online; return; }
-    syncAnimationPlayed = true;
-    animateConnectBadge();
-    document.querySelectorAll('.glass').forEach((g, i) => { setTimeout(() => sweepCard(g), i * 60); });
-    const scope = document.getElementById('mainScope');
-    if (scope) animateScopeShimmer(scope);
-  }
-  wasOnline = online;
-}
-
-async function pollEvents() {
-  if (!EVENTS_URL) return;
-  try {
-    const res = await fetch(EVENTS_URL, { cache:'no-store' });
-    if (!res.ok) throw new Error('bad status');
-    const data = await res.json();
-    setConnState(true);
-    if (firstPoll) {
-      if (Array.isArray(data)) {
-        data.forEach(e => { if (e && e.id !== undefined) seenIds.add(e.id); });
-        events = data.filter(e => e && e.id !== undefined).sort((a, b) => b.id - a.id).map(e => ({
-          id: e.id, type: (e.type || "unknown").toLowerCase(),
-          confidence: Math.round(e.confidence ?? 0),
-          timestamp: e.timestamp || new Date().toISOString(), recorded: true
-        }));
-        renderHistory();
-        /* Restore every category's status chip to its own latest
-           reading — not just whichever category happened to have
-           the single most-recent event overall. */
-        if (events.length > 0) {
-          const latestByType = {};
-          events.forEach(e => { if (!(e.type in latestByType)) latestByType[e.type] = e; });
-          Object.values(latestByType).forEach(e => updateStatusChip(e.type, e.confidence, e.timestamp));
-        }
-      }
-      firstPoll = false; return;
-    }
-    if (Array.isArray(data)) {
-      data.filter(e => e && e.id !== undefined && !seenIds.has(e.id))
-          .sort((a,b) => a.id - b.id)
-          .forEach(e => { seenIds.add(e.id); recordEvent({ id:e.id, type:(e.type||'unknown').toLowerCase(), confidence:Math.round(e.confidence??0), timestamp:e.timestamp||new Date().toISOString() }); });
-    }
-  } catch(err) { setConnState(false); }
-}
-
-function applyEndpoint() {
-  EVENTS_URL = document.getElementById('endpointInput').value.trim();
-  clearInterval(pollTimer);
-  if (EVENTS_URL) { pollEvents(); pollTimer = setInterval(pollEvents, 3000); showToast('Connecting to Flask…'); }
-  else setConnState(false);
-}
-
-function snapshot() {
-  const scopeEl = document.getElementById('cameraScope');
-  const img = scopeEl ? scopeEl.querySelector('img') : null;
-
-  if (!img || !img.src || scopeEl.classList.contains('is-offline') || img.naturalWidth === 0) {
-    showToast('Camera is offline — nothing to capture', true);
-    return;
-  }
-
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    const dataUrl = canvas.toDataURL('image/png');
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = `snapshot-${stamp}.png`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    showToast('Snapshot saved');
-    animateScopeShimmer(scopeEl);
-  } catch (err) {
-    /* A cross-origin feed with no CORS headers taints the canvas
-       and blocks toDataURL — fail gracefully instead of a silent no-op. */
-    showToast('Could not save snapshot — camera feed blocks capture', true);
-  }
-}
-function reconnectCamera() {
-  const scopeEl = document.getElementById('cameraScope');
-  if (!scopeEl || typeof scopeEl._cameraReconnect !== 'function') {
-    showToast('Camera reconnect unavailable', true);
-    return;
-  }
-  showToast('Reconnecting camera…');
-  scopeEl._cameraReconnect((ok) => {
-    if (ok) {
-      showToast('Camera reconnected');
-      animateScopeShimmer(scopeEl);
-    } else {
-      showToast('Still no signal — camera offline', true);
-    }
-  });
-}
-
-/* Camera offline state */
-const CAMERA_OFFLINE_RETRY_MS = 4000;
-const CAMERA_DECODE_GRACE_MS = 2500;
-
-function initCameraOfflineState(scopeEl) {
-  if (!scopeEl) return;
-  const img = scopeEl.querySelector('img');
-  if (!img) return;
-  let retryTimer = null, decodeTimer = null, pendingResult = null;
-  function getCurrentSrc() { return img.getAttribute('src') || ''; }
-  function goOffline() { if (!scopeEl.classList.contains('is-offline')) scopeEl.classList.add('is-offline'); }
-  function goOnline() {
-    scopeEl.classList.remove('is-offline');
-    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-    if (decodeTimer) { clearTimeout(decodeTimer); decodeTimer = null; }
-  }
-  function scheduleRetry() {
-    if (retryTimer) return;
-    const src = getCurrentSrc(); if (!src) return;
-    retryTimer = setTimeout(() => {
-      retryTimer = null;
-      const sep = src.indexOf('?') === -1 ? '?' : '&';
-      img.src = src + sep + '_retry=' + Date.now();
-    }, CAMERA_OFFLINE_RETRY_MS);
-  }
-  img.addEventListener('error', () => {
-    if (decodeTimer) { clearTimeout(decodeTimer); decodeTimer = null; }
-    goOffline(); scheduleRetry();
-    if (pendingResult) { const cb = pendingResult; pendingResult = null; cb(false); }
-  });
-  img.addEventListener('load', () => {
-    if (decodeTimer) clearTimeout(decodeTimer);
-    decodeTimer = setTimeout(() => {
-      decodeTimer = null;
-      const ok = img.naturalWidth !== 0;
-      if (ok) goOnline(); else { goOffline(); scheduleRetry(); }
-      if (pendingResult) { const cb = pendingResult; pendingResult = null; cb(ok); }
-    }, CAMERA_DECODE_GRACE_MS);
-  });
-  if (!getCurrentSrc()) goOffline();
-
-  /* Exposed so the Reconnect button can force a fresh load attempt
-     and find out whether it actually got a frame back, instead of
-     just assuming success after a timer. */
-  scopeEl._cameraReconnect = function (onResult) {
-    const src = getCurrentSrc();
-    if (!src) { goOffline(); if (onResult) onResult(false); return; }
-    pendingResult = onResult || null;
-    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-    const sep = src.indexOf('?') === -1 ? '?' : '&';
-    img.src = src + sep + '_retry=' + Date.now();
-  };
-}
-initCameraOfflineState(document.getElementById('mainScope'));
-initCameraOfflineState(document.getElementById('cameraScope'));
-
-document.addEventListener('visibilitychange', () => {
-  document.querySelectorAll('.scope-offline').forEach(el => el.classList.toggle('paused', document.hidden));
-});
-
-/* Settings persistence */
-function saveSettings() {
-  localStorage.setItem('notify', toggleNotify.checked);
-  localStorage.setItem('sound', toggleSound.checked);
-  localStorage.setItem('record', toggleRecord.checked);
-  localStorage.setItem('endpoint', endpointInput.value);
-  localStorage.setItem('emergency', toggleEmergency.checked);
-}
-function loadSettings() {
-  if (localStorage.getItem('notify')    !== null) toggleNotify.checked   = localStorage.getItem('notify')    === 'true';
-  if (localStorage.getItem('sound')     !== null) toggleSound.checked    = localStorage.getItem('sound')     === 'true';
-  if (localStorage.getItem('record')    !== null) toggleRecord.checked   = localStorage.getItem('record')    === 'true';
-  if (localStorage.getItem('endpoint')  !== null) endpointInput.value    = localStorage.getItem('endpoint');
-  if (localStorage.getItem('emergency') !== null) toggleEmergency.checked = localStorage.getItem('emergency') === 'true';
-}
-toggleNotify.addEventListener('change', saveSettings);
-toggleSound.addEventListener('change', saveSettings);
-toggleRecord.addEventListener('change', saveSettings);
-endpointInput.addEventListener('change', saveSettings);
-toggleEmergency.addEventListener('change', saveSettings);
-loadSettings();
-
-
-/* ============================================================
-   BOOT SEQUENCE ORCHESTRATION
-   ============================================================ */
-let bootFinished = false;
-let flaskConnected = false;
-let syncAnimationPlayed = false;
-
-function runBootSequence() {
-  const boot = document.getElementById('bootScreen');
-  const circle = document.getElementById('bootCircle');
-
-  if (prefersReducedMotion) {
-    document.body.classList.remove('booting');
-    /* Instantly reveal everything */
-    document.querySelectorAll('.layout .glass').forEach(el => el.classList.add('revealed'));
-    const _tb = document.getElementById('tabbar');
-    const _cp = document.querySelector('.conn-pill');
-    const _lay = document.querySelector('.layout');
-    const _top = document.querySelector('.topbar');
-    const _rays = document.querySelector('.light-rays');
-    const _bokeh = document.querySelector('.bokeh-layer');
-    if (_lay)  _lay.classList.add('revealed');
-    if (_top)  _top.classList.add('revealed');
-    if (_rays) _rays.classList.add('revealed');
-    if (_bokeh) _bokeh.classList.add('revealed');
-    if (_tb)   _tb.classList.add('revealed');
-    if (_cp)   _cp.classList.add('revealed');
-    if (boot) {
-      boot.style.transition = 'opacity .3s ease';
-      boot.style.opacity = '0';
-      boot.style.pointerEvents = 'none';
-      setTimeout(() => { boot.remove(); }, 300);
-    }
-    finishBoot();
-    return;
-  }
-
-  /* Turn black 0.5s before fading */
-  setTimeout(() => {
-    if (circle) {
-      circle.classList.add('boot-darken');
-      const chromatic = circle.closest('.boot-chromatic');
-      if (chromatic) chromatic.classList.add('boot-darken');
-    }
-  }, 2500);
-
-  /* Fade the circle out */
-  setTimeout(() => {
-    if (circle) circle.classList.add('boot-fade-out');
-  }, 3000);
-
-  /* ── Boot exit: circle fades, screen dissolves, dashboard rises ──
-     3200ms — boot screen begins its fade+scale-out
-     3200ms — dashboard cards start rising in underneath it        */
-  setTimeout(() => {
-    /* Remove booting so card transitions are unlocked */
-    document.body.classList.remove('booting');
-    /* Boot screen: soft fade + scale out */
-    if (boot) {
-      boot.classList.add('boot-out');
-      setTimeout(() => boot.classList.add('boot-gone'), 850);
-    }
-    /* Dashboard reveal fires as the boot screen dissolves */
-    revealDashboard();
-  }, 3200);
-}
-
-function revealDashboard() {
-  const targets  = Array.from(document.querySelectorAll('.layout .glass'));
-  const tb       = document.getElementById('tabbar');
-  const connPill = document.querySelector('.conn-pill');
-  const layout   = document.querySelector('.layout');
-  const topbar   = document.querySelector('.topbar');
-  const rays     = document.querySelector('.light-rays');
-  const bokeh    = document.querySelector('.bokeh-layer');
-
-  /* Ambient layers */
-  if (rays)  rays.classList.add('revealed');
-  if (bokeh) bokeh.classList.add('revealed');
-
-  /* Layout / topbar */
-  setTimeout(() => {
-    if (layout) layout.classList.add('revealed');
-    if (topbar) topbar.classList.add('revealed');
-  }, 80);
-
-  /* Connection pill */
-  setTimeout(() => {
-    if (connPill) connPill.classList.add('revealed');
-  }, 120);
-
-  /* Tabbar */
-  setTimeout(() => {
-    if (tb) tb.classList.add('revealed');
-  }, 160);
-
-  /* Glass cards — stagger in */
-  let maxDelay = 0;
-  targets.forEach((el, i) => {
-    const delay = 60 + i * 55;
-    maxDelay = Math.max(maxDelay, delay);
-    setTimeout(() => {
-      el.classList.add('revealed');
-      setTimeout(() => {
-        sweepCard(el);
-        if (el.id === 'card-livefeed') {
-          const s = document.getElementById('mainScope');
-          if (s) animateScopeShimmer(s);
-        }
-      }, 320);
-    }, delay);
-  });
-
-  setTimeout(finishBoot, maxDelay + 700);
-}
-
-function finishBoot() {
-  if (bootFinished) return;
-  bootFinished = true;
-  updateAnalytics();
-  if (flaskConnected && !syncAnimationPlayed) {
-    syncAnimationPlayed = true;
-    animateConnectBadge();
-    document.querySelectorAll('.glass').forEach((g, i) => { setTimeout(() => sweepCard(g), i * 60); });
-    const scope = document.getElementById('mainScope');
-    if (scope) animateScopeShimmer(scope);
-  }
-}
-
-applyEndpoint();
-runBootSequence();
 </script>
+
 </body>
 </html>
