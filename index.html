@@ -600,38 +600,18 @@ body.shaking { animation: screenShake .4s ease; }
   100% { transform: translateY(0) scale(1); }
 }
 
-.glass-sweep {
-  position:absolute;inset:0;pointer-events:none;z-index:10;
-  overflow:hidden;border-radius:inherit;
-  background:linear-gradient(110deg,transparent 0%,rgba(255,255,255,.55) 45%,rgba(255,255,255,.28) 55%,transparent 100%);
-  transform:translateZ(0) skewX(-15deg) translateX(-200%);
-  will-change:transform;
-  backface-visibility:hidden;-webkit-backface-visibility:hidden;
-  opacity:0;
-}
 /* ============================================================
-   PER-CARD SWEEP CHROMATIC — visible RGB split during each wipe
+   PER-CARD UPDATE FLASH — simple brightness pulse, no chromatic
+   split and no diagonal light bar. Used by sweepCard() whenever
+   a card's data updates.
    ============================================================ */
-.glass.sweeping {
-  filter: drop-shadow(-3px 0 2px rgba(255, 40, 80, 0.35)) drop-shadow(3px 0 2px rgba(0, 230, 255, 0.35));
-  transition: filter 0.15s ease;
+.glass.card-flash {
+  animation: cardFlash .6s ease-out;
 }
-.glass.sweeping .glass-sweep {
-  opacity:1;
-  animation:glassSweep .75s cubic-bezier(.25,.46,.45,.94) forwards;
-}
-.glass.sweep-chromatic-fade {
-  filter: drop-shadow(-3px 0 2px rgba(255, 40, 80, 0)) drop-shadow(3px 0 2px rgba(0, 230, 255, 0)) !important;
-  transition: filter 0.55s cubic-bezier(.22,1,.36,1);
-}
-
-.glass.sweeping .glass-sweep {
-  opacity:1;
-  animation:glassSweep .75s cubic-bezier(.25,.46,.45,.94) forwards;
-}
-@keyframes glassSweep {
-  0%   { transform:translateZ(0) skewX(-15deg) translateX(-200%); }
-  100% { transform:translateZ(0) skewX(-15deg) translateX(280%); }
+@keyframes cardFlash {
+  0%   { filter: brightness(1); }
+  35%  { filter: brightness(1.16); }
+  100% { filter: brightness(1); }
 }
 
 .glass-edge {
@@ -1511,7 +1491,6 @@ body.shaking { animation: screenShake .4s ease; }
   .em-panel    { background:rgba(10,4,4,.94); }
   .card-head .tag,
   .field input[type=text] { background:rgba(255,255,255,.94); }
-  .glass-sweep { display:none !important; }
 }
 
 .scope { transform:translateZ(0); }
@@ -1727,7 +1706,7 @@ body.booting .conn-pill {
   <!-- LEFT SIDE PANEL -->
   <aside class="side" id="sideLeftPanel">
     <div class="glass">
-      <div class="glass-edge"></div><div class="glass-ca"></div><div class="glass-sweep"></div>
+      <div class="glass-edge"></div><div class="glass-ca"></div>
       <div class="side-brand">
         <div class="mark">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s7 7.5 7 12a7 7 0 0 1-14 0c0-4.5 7-12 7-12z"/></svg>
@@ -1740,7 +1719,7 @@ body.booting .conn-pill {
     </div>
 
     <div class="glass analytics-card" id="analyticsCard">
-      <div class="glass-edge"></div><div class="glass-ca"></div><div class="glass-sweep"></div>
+      <div class="glass-edge"></div><div class="glass-ca"></div>
       <div class="card-head">
         <h2 style="font-size:15px;">Analytics</h2>
         <div class="tag" id="analyticsTag">Live</div>
@@ -1825,7 +1804,7 @@ body.booting .conn-pill {
     <!-- HOME -->
     <div class="view active" id="view-home">
       <div class="glass" id="card-livefeed">
-        <div class="glass-edge"></div><div class="glass-ca"></div><div class="glass-sweep"></div>
+        <div class="glass-edge"></div><div class="glass-ca"></div>
         <div class="card-head">
           <h2>Live Feed</h2>
           <div class="tag" id="liveFeedTag">CAM 01</div>
@@ -1866,7 +1845,7 @@ body.booting .conn-pill {
       </div>
 
       <div class="glass" id="card-detection">
-        <div class="glass-edge"></div><div class="glass-ca"></div><div class="glass-sweep"></div>
+        <div class="glass-edge"></div><div class="glass-ca"></div>
         <div class="card-head">
           <h2>Detection Status</h2>
           <div class="tag" id="lastUpdateTag">No data yet</div>
@@ -1895,7 +1874,7 @@ body.booting .conn-pill {
     <!-- CAMERA -->
     <div class="view" id="view-camera">
       <div class="glass">
-        <div class="glass-edge"></div><div class="glass-ca"></div><div class="glass-sweep"></div>
+        <div class="glass-edge"></div><div class="glass-ca"></div>
         <div class="card-head">
           <h2>Camera</h2>
           <div class="tag">CAM 01</div>
@@ -1947,7 +1926,7 @@ body.booting .conn-pill {
     <!-- ALERTS -->
     <div class="view" id="view-alerts">
       <div class="glass">
-        <div class="glass-edge"></div><div class="glass-ca"></div><div class="glass-sweep"></div>
+        <div class="glass-edge"></div><div class="glass-ca"></div>
         <div class="card-head"><h2>Notifications</h2></div>
         <div class="row">
           <div><div class="t-label">Alert notifications</div><div class="t-desc">Show a banner when Flask reports an event</div></div>
@@ -1971,7 +1950,7 @@ body.booting .conn-pill {
     <!-- HISTORY -->
     <div class="view" id="view-history">
       <div class="glass">
-        <div class="glass-edge"></div><div class="glass-ca"></div><div class="glass-sweep"></div>
+        <div class="glass-edge"></div><div class="glass-ca"></div>
         <div class="card-head">
           <h2>Event History</h2>
           <div class="tag" id="historyCount">0 events</div>
@@ -1988,7 +1967,7 @@ body.booting .conn-pill {
     <!-- SETTINGS -->
     <div class="view" id="view-settings">
       <div class="glass">
-        <div class="glass-edge"></div><div class="glass-ca"></div><div class="glass-sweep"></div>
+        <div class="glass-edge"></div><div class="glass-ca"></div>
         <div class="card-head"><h2>Flask Connection</h2></div>
         <div class="field">
           <label>Events endpoint</label>
@@ -2020,7 +1999,7 @@ body.booting .conn-pill {
   <!-- RIGHT SIDE PANEL -->
   <aside class="side" id="sideRightPanel">
     <div class="glass" id="sideQuickGlance">
-      <div class="glass-edge"></div><div class="glass-ca"></div><div class="glass-sweep"></div>
+      <div class="glass-edge"></div><div class="glass-ca"></div>
       <div class="card-head"><h2 style="font-size:15px;">Quick Glance</h2></div>
       <div class="quick-row">
         <div class="k">Connection</div>
@@ -2036,7 +2015,7 @@ body.booting .conn-pill {
       </div>
     </div>
     <div class="glass" id="sideRecentCard">
-      <div class="glass-edge"></div><div class="glass-ca"></div><div class="glass-sweep"></div>
+      <div class="glass-edge"></div><div class="glass-ca"></div>
       <div class="card-head"><h2 style="font-size:15px;">Recent Events</h2></div>
       <div class="mini-hlist" id="sideHistoryList">
         <div class="mini-empty">Nothing yet — events will show up here.</div>
@@ -2406,16 +2385,12 @@ function beep(critical) {
    DASHBOARD REFRESH ANIMATIONS
    ============================================================ */
 function sweepCard(card) {
-  if (prefersReducedMotion) return;
-  card.classList.remove('refreshing', 'sweeping', 'sweep-chromatic-fade'); void card.offsetWidth;
-  card.classList.add('refreshing', 'sweeping');
+  if (prefersReducedMotion || !card) return;
+  card.classList.remove('refreshing', 'card-flash'); void card.offsetWidth;
+  card.classList.add('refreshing', 'card-flash');
   setTimeout(() => {
-    card.classList.remove('sweeping');
-    card.classList.add('sweep-chromatic-fade');
-  }, 750);
-  setTimeout(() => {
-    card.classList.remove('refreshing', 'sweep-chromatic-fade');
-  }, 1400);
+    card.classList.remove('refreshing', 'card-flash');
+  }, 700);
 }
 
 function animateConnectBadge() {
