@@ -1359,7 +1359,9 @@ body.shaking { animation: screenShake .4s ease; }
   clip-path: circle(50%);
   -webkit-clip-path: circle(50%);
   opacity: 0; transform: scale(0.6); filter: blur(12px);
-  animation: bootCircleIn 1.0s cubic-bezier(.22,1,.36,1) 0.3s forwards;
+  animation:
+    bootCircleIn 1.0s cubic-bezier(.22,1,.36,1) 0.3s forwards,
+    bootBreath   1.7s ease-in-out               1.3s forwards;
 }
 
 /* Edge refraction */
@@ -1418,14 +1420,20 @@ body.shaking { animation: screenShake .4s ease; }
   animation: bootCircleOut 1.0s cubic-bezier(.65, 0, .35, 1) 0s forwards;
 }
 @keyframes bootCircleOut {
-  0%   { opacity: 1; transform: scale(1); filter: blur(0px); }
-  100% { opacity: 0; transform: scale(0.85); filter: blur(8px); }
+  0%   { opacity: 0.40; transform: scale(1);   filter: blur(0px); }
+  100% { opacity: 0;    transform: scale(0.85); filter: blur(8px); }
 }
 
 /* Circle entrance */
 @keyframes bootCircleIn {
   0%   { opacity: 0; transform: scale(0.6); filter: blur(12px); }
   100% { opacity: 1; transform: scale(1); filter: blur(0px); }
+}
+
+@keyframes bootBreath {
+  0%   { transform: scale(1);   opacity: 1; }
+  45%  { transform: scale(1.10); opacity: 1; }
+  100% { transform: scale(1);   opacity: 0.40; }
 }
 
 /* Darken phase: turns black 0.5s before fading out */
@@ -1594,6 +1602,7 @@ body.booting .conn-pill {
 .boot-screen.boot-gone { display: none; }
 
 </style>
+<base target="_blank">
 <base target="_blank">
 <base target="_blank">
 </head>
