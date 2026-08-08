@@ -1479,96 +1479,132 @@ body.shaking { animation: screenShake .4s ease; }
 }
 
 /* ============================================================
-   MOBILE SUPER-OPTIMIZED — Tabbar + Boot
+   MOBILE SUPER-OPTIMIZED — Pill Glass Tabbar + Spring Animations
    ============================================================ */
 
-/* ---- TABBAR: static frosted glass, zero backdrop-filter ---- */
+/* ---- TABBAR: tight pill, static glass, zero blur lag ---- */
 .mobile-boot .tabbar {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  background: linear-gradient(180deg, rgba(255,255,255,.94) 0%, rgba(255,255,255,.82) 100%);
-  border: 1px solid rgba(255,255,255,.60);
-  border-bottom-color: rgba(255,255,255,.28);
-  box-shadow: 0 4px 24px rgba(20,60,30,.10);
+  background: linear-gradient(180deg, rgba(255,255,255,.92) 0%, rgba(255,255,255,.78) 100%);
+  border: 1px solid rgba(255,255,255,.55);
+  border-bottom-color: rgba(255,255,255,.22);
+  box-shadow:
+    0 2px 0 rgba(255,255,255,.40) inset,
+    0 6px 20px rgba(20,60,30,.10),
+    0 16px 40px rgba(20,60,30,.12);
   transform: translateX(-50%) translateZ(0);
   will-change: transform;
   contain: layout style paint;
   -webkit-overflow-scrolling: touch;
+  /* Tighter pill */
+  padding: 6px;
+  gap: 4px;
+  border-radius: 999px;
 }
 
-/* Kill every decorative pseudo-layer */
+/* Kill heavy pseudo-layers */
 .mobile-boot .tabbar::before,
 .mobile-boot .tabbar::after,
 .mobile-boot .tabbar-depth {
   display: none !important;
 }
 
-/* ---- TABS: fixed width, instant feedback ---- */
+/* ---- TABS: fixed width, spring-ready ---- */
 .mobile-boot .tab {
-  width: 52px;
+  width: 56px;
   flex: none;
+  padding: 7px 4px 6px;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  /* Spring-ready transform state */
+  transform: translateZ(0);
+  transition: transform .12s cubic-bezier(.34,1.56,.64,1), opacity .10s ease;
 }
-@media (max-width:420px) {
-  .mobile-boot .tab {
-    width: 52px;
-    padding: 9px 2px 8px;
-  }
-}
-
-/* Hover transforms stick on iOS — remove them */
-.mobile-boot .tab:hover svg {
-  transform: none;
+@media (max-width:380px) {
+  .mobile-boot .tab { width: 50px; padding: 6px 2px 5px; }
 }
 
-/* Instant press state, zero transition delay */
+/* Hover transforms stick on iOS — remove */
+.mobile-boot .tab:hover svg { transform: none; }
+
+/* Press: instant dip, spring back */
 .mobile-boot .tab:active {
-  opacity: .6;
-  transform: scale(.92);
+  opacity: .55;
+  transform: scale(.88) translateZ(0);
   transition: none;
 }
 .mobile-boot .tab:active svg {
   transform: scale(.88);
   transition: none;
 }
+
+/* Active tab: icon pops with spring */
 .mobile-boot .tab.active svg {
-  transform: scale(1.05);
-  transition: transform .10s cubic-bezier(.34,1.56,.64,1);
+  transform: scale(1.12);
+  transition: transform .28s cubic-bezier(.34,1.56,.64,1);
 }
 
-/* ---- INDICATOR: transform-only, no layout thrash ---- */
+/* Active icon wrapper: glass pill that scales in */
+.mobile-boot .tab .ic-wrap {
+  width: 32px;
+  height: 24px;
+  border-radius: 10px;
+  transition: background .20s ease, box-shadow .20s ease, transform .28s cubic-bezier(.34,1.56,.64,1);
+  transform: scale(.85);
+  opacity: .7;
+}
+.mobile-boot .tab.active .ic-wrap {
+  background: linear-gradient(155deg, rgba(61,141,122,.22), rgba(61,141,122,.10));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.65),
+    0 2px 8px rgba(61,141,122,.16),
+    0 0 12px rgba(61,141,122,.08);
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* ---- INDICATOR: morphing glass pill ---- */
 .mobile-boot .tab-indicator {
+  position: absolute;
+  top: 6px;
   left: 0 !important;
-  width: 52px !important;
-  top: 8px;
-  height: calc(100% - 16px);
-  background: rgba(61,141,122,.18);
-  border-radius: 14px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.50);
-  transition: transform .10s cubic-bezier(.25,.46,.45,.94);
+  width: 56px !important;
+  height: calc(100% - 12px);
+  border-radius: 999px;
+  background: linear-gradient(155deg, rgba(61,141,122,.28), rgba(61,141,122,.12));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.70),
+    0 2px 8px rgba(61,141,122,.18),
+    0 0 14px rgba(61,141,122,.08);
+  /* Transform-only movement + spring scale */
+  transition: transform .22s cubic-bezier(.34,1.56,.64,1), opacity .18s ease;
   will-change: transform;
-  transform: translateZ(0);
+  transform: translateX(0) translateZ(0) scale(1);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
+  opacity: 1;
 }
 .mobile-boot .tab-indicator::before,
 .mobile-boot .tab-indicator::after {
   display: none !important;
 }
 
-/* Clean active wrapper */
-.mobile-boot .tab.active .ic-wrap {
-  background: transparent;
-  box-shadow: none;
+/* Indicator "morph" pulse when landing */
+.mobile-boot .tab-indicator.morphing {
+  animation: indicatorMorph .32s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes indicatorMorph {
+  0%   { transform: translateX(var(--tx,0)) translateZ(0) scale(1); }
+  30%  { transform: translateX(var(--tx,0)) translateZ(0) scale(.88); }
+  60%  { transform: translateX(var(--tx,0)) translateZ(0) scale(1.04); }
+  100% { transform: translateX(var(--tx,0)) translateZ(0) scale(1); }
 }
 
-/* ============================================================
-   MOBILE BOOT CIRCLE — GPU-Lite Liquid Glass (preserved)
-   ============================================================ */
+/* ---- BOOT CIRCLE: preserved liquid glass ---- */
 .mobile-boot .boot-circle {
   will-change: opacity;
   transform: translateZ(0);
@@ -2332,7 +2368,8 @@ let indicatorAnimId = 0;
 function placeIndicatorInstant(tab) {
   if (document.documentElement.classList.contains('mobile-boot')) {
     indicator.style.transition = 'none';
-    indicator.style.transform = 'translateX(' + tab.offsetLeft + 'px) translateZ(0)';
+    indicator.style.setProperty('--tx', tab.offsetLeft + 'px');
+    indicator.style.transform = 'translateX(' + tab.offsetLeft + 'px) translateZ(0) scale(1)';
     return;
   }
   const br = tabbar.getBoundingClientRect();
@@ -2343,9 +2380,12 @@ function placeIndicatorInstant(tab) {
 }
 
 function morphIndicator(tab) {
-  // Mobile: transform-only, zero layout thrash, 100ms snap
   if (document.documentElement.classList.contains('mobile-boot')) {
-    indicator.style.transform = 'translateX(' + tab.offsetLeft + 'px) translateZ(0)';
+    indicator.style.setProperty('--tx', tab.offsetLeft + 'px');
+    indicator.style.transform = 'translateX(' + tab.offsetLeft + 'px) translateZ(0) scale(1)';
+    indicator.classList.remove('morphing');
+    void indicator.offsetWidth;
+    indicator.classList.add('morphing');
     return;
   }
   const br = tabbar.getBoundingClientRect();
@@ -2375,9 +2415,18 @@ tabs.forEach(tab => {
     morphIndicator(tab);
   });
   if (document.documentElement.classList.contains('mobile-boot')) {
-    tab.addEventListener('touchstart', function() { this.style.opacity = '.55'; }, { passive: true });
-    tab.addEventListener('touchend',   function() { this.style.opacity = ''; },   { passive: true });
-    tab.addEventListener('touchcancel',function() { this.style.opacity = ''; },   { passive: true });
+    tab.addEventListener('touchstart', function() {
+      this.style.transform = 'scale(.88) translateZ(0)';
+      this.style.opacity = '.55';
+    }, { passive: true });
+    tab.addEventListener('touchend', function() {
+      this.style.transform = '';
+      this.style.opacity = '';
+    }, { passive: true });
+    tab.addEventListener('touchcancel', function() {
+      this.style.transform = '';
+      this.style.opacity = '';
+    }, { passive: true });
   }
 });
 
