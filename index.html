@@ -1682,63 +1682,11 @@ body.booting .conn-pill {
 }
 .boot-screen.boot-gone { display: none; }
 
-/* ── Full-viewport wipe overlay ──────────────────────────────
-   A fixed pseudo-element that sweeps left→right as the
-   dashboard reveals, carrying a chromatic edge at its front.  */
-#bootWipe {
-  position: fixed; inset: 0; z-index: 390;
-  pointer-events: none;
-  /* The wipe is a white sheen with a hard chromatic leading edge */
-  background: linear-gradient(
-    100deg,
-    transparent            0%,
-    rgba(0, 220, 255, 0.18) 44%,
-    rgba(255,255,255, 0.55) 47%,
-    rgba(255, 30,  70, 0.18) 50%,
-    transparent            54%
-  );
-  transform: translateX(-110%);
-  opacity: 0;
-}
-@keyframes bootWipeSweep {
-  0%   { transform: translateX(-110%); opacity: 1; }
-  100% { transform: translateX( 110%); opacity: 1; }
-}
-#bootWipe.wiping {
-  animation: bootWipeSweep 0.72s cubic-bezier(.42,0,.18,1) forwards;
-}
-
-/* Secondary softer wipe — trails the first by 80ms */
-#bootWipe2 {
-  position: fixed; inset: 0; z-index: 389;
-  pointer-events: none;
-  background: linear-gradient(
-    100deg,
-    transparent              0%,
-    rgba(0, 220, 255, 0.07) 40%,
-    rgba(255,255,255, 0.22) 47%,
-    rgba(255, 30,  70, 0.07) 52%,
-    transparent              58%
-  );
-  transform: translateX(-110%);
-  opacity: 0;
-}
-@keyframes bootWipe2Sweep {
-  0%   { transform: translateX(-110%); opacity: 1; }
-  100% { transform: translateX( 110%); opacity: 0.4; }
-}
-#bootWipe2.wiping {
-  animation: bootWipe2Sweep 0.88s cubic-bezier(.42,0,.28,1) 0.08s forwards;
-}
 </style>
 <base target="_blank">
 <base target="_blank">
 </head>
 <body class="booting">
-
-<!-- Chromatic wipe overlays — fired during boot→dashboard transition -->
-<div id="bootWipe"></div>
-<div id="bootWipe2"></div>
 
 <div class="boot-screen" id="bootScreen">
   <div class="boot-grain"></div>
@@ -3007,17 +2955,6 @@ function revealDashboard() {
   const topbar   = document.querySelector('.topbar');
   const rays     = document.querySelector('.light-rays');
   const bokeh    = document.querySelector('.bokeh-layer');
-  const wipe     = document.getElementById('bootWipe');
-  const wipe2    = document.getElementById('bootWipe2');
-
-  /* ── Fire the viewport wipe immediately ── */
-  if (wipe)  { wipe.classList.add('wiping'); }
-  if (wipe2) { wipe2.classList.add('wiping'); }
-  /* Clean up wipe elements after they've crossed */
-  setTimeout(() => {
-    if (wipe)  { wipe.remove(); }
-    if (wipe2) { wipe2.remove(); }
-  }, 1200);
 
   /* ── Helper: chromatic burst on an element ── */
   function caBurst(el, delay) {
