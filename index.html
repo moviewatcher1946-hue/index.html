@@ -1948,12 +1948,6 @@ body.booting .conn-pill {
           <button class="btn" onclick="applyEndpoint()">
             <span class="btn-streak"></span><div class="btn-edge"></div>Connect
           </button>
-          <button class="btn ghost" onclick="sendTestEvent()">
-            <span class="btn-streak"></span><div class="btn-edge"></div>Send Test Event
-          </button>
-          <button class="btn ghost" onclick="triggerTestEmergency()">
-            <span class="btn-streak"></span><div class="btn-edge"></div>Test Emergency
-          </button>
         </div>
       </div>
       <div class="glass">
@@ -2147,12 +2141,6 @@ function dismissEmergency() {
   const tag = document.getElementById('lastUpdateTag');
   tag.classList.remove('emergency-tag');
   emergencyActive = false;
-}
-
-function triggerTestEmergency() {
-  const types = ['fire','smoke','flood','landslide'];
-  const type = types[Math.floor(Math.random() * types.length)];
-  triggerEmergency({ type, confidence: 85, timestamp: new Date().toISOString() });
 }
 
 /* ============================================================
@@ -2707,22 +2695,53 @@ function applyEndpoint() {
   else setConnState(false);
 }
 
-async function sendTestEvent() {
-  const types = ['fire','smoke','flood','landslide'];
-  const event = { type:types[Math.floor(Math.random()*types.length)], confidence:Math.round(30+Math.random()*60) };
-  try {
-    const res = await fetch('https://flask-m2om.onrender.com/add_event', {
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(event)
-    });
-    const data = await res.json();
-    if (data.status==='saved') showToast('Event saved to backend');
-  } catch(err) { showToast('Failed to save event', true); }
-}
+function snapshot() {
+  const scopeEl = document.getElementById('cameraScope');
+  const img = scopeEl ? scopeEl.querySelector('img') : null;
 
-function snapshot() { showToast('Snapshot captured'); animateScopeShimmer(document.getElementById('mainScope')); }
+  if (!img || !img.src || scopeEl.classList.contains('is-offline') || img.naturalWidth === 0) {
+    showToast('Camera is offline — nothing to capture', true);
+    return;
+  }
+
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const dataUrl = canvas.toDataURL('image/png');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `snapshot-${stamp}.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    showToast('Snapshot saved');
+    animateScopeShimmer(scopeEl);
+  } catch (err) {
+    /* A cross-origin feed with no CORS headers taints the canvas
+       and blocks toDataURL — fail gracefully instead of a silent no-op. */
+    showToast('Could not save snapshot — camera feed blocks capture', true);
+  }
+}
 function reconnectCamera() {
+  const scopeEl = document.getElementById('cameraScope');
+  if (!scopeEl || typeof scopeEl._cameraReconnect !== 'function') {
+    showToast('Camera reconnect unavailable', true);
+    return;
+  }
   showToast('Reconnecting camera…');
-  setTimeout(() => { showToast('Camera reconnected'); animateScopeShimmer(document.getElementById('cameraScope')); }, 1200);
+  scopeEl._cameraReconnect((ok) => {
+    if (ok) {
+      showToast('Camera reconnected');
+      animateScopeShimmer(scopeEl);
+    } else {
+      showToast('Still no signal — camera offline', true);
+    }
+  });
 }
 
 /* Camera offline state */
@@ -2733,7 +2752,7 @@ function initCameraOfflineState(scopeEl) {
   if (!scopeEl) return;
   const img = scopeEl.querySelector('img');
   if (!img) return;
-  let retryTimer = null, decodeTimer = null;
+  let retryTimer = null, decodeTimer = null, pendingResult = null;
   function getCurrentSrc() { return img.getAttribute('src') || ''; }
   function goOffline() { if (!scopeEl.classList.contains('is-offline')) scopeEl.classList.add('is-offline'); }
   function goOnline() {
@@ -2750,15 +2769,33 @@ function initCameraOfflineState(scopeEl) {
       img.src = src + sep + '_retry=' + Date.now();
     }, CAMERA_OFFLINE_RETRY_MS);
   }
-  img.addEventListener('error', () => { if (decodeTimer) { clearTimeout(decodeTimer); decodeTimer = null; } goOffline(); scheduleRetry(); });
+  img.addEventListener('error', () => {
+    if (decodeTimer) { clearTimeout(decodeTimer); decodeTimer = null; }
+    goOffline(); scheduleRetry();
+    if (pendingResult) { const cb = pendingResult; pendingResult = null; cb(false); }
+  });
   img.addEventListener('load', () => {
     if (decodeTimer) clearTimeout(decodeTimer);
     decodeTimer = setTimeout(() => {
       decodeTimer = null;
-      if (img.naturalWidth === 0) { goOffline(); scheduleRetry(); } else { goOnline(); }
+      const ok = img.naturalWidth !== 0;
+      if (ok) goOnline(); else { goOffline(); scheduleRetry(); }
+      if (pendingResult) { const cb = pendingResult; pendingResult = null; cb(ok); }
     }, CAMERA_DECODE_GRACE_MS);
   });
   if (!getCurrentSrc()) goOffline();
+
+  /* Exposed so the Reconnect button can force a fresh load attempt
+     and find out whether it actually got a frame back, instead of
+     just assuming success after a timer. */
+  scopeEl._cameraReconnect = function (onResult) {
+    const src = getCurrentSrc();
+    if (!src) { goOffline(); if (onResult) onResult(false); return; }
+    pendingResult = onResult || null;
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+    const sep = src.indexOf('?') === -1 ? '?' : '&';
+    img.src = src + sep + '_retry=' + Date.now();
+  };
 }
 initCameraOfflineState(document.getElementById('mainScope'));
 initCameraOfflineState(document.getElementById('cameraScope'));
