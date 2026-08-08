@@ -1479,154 +1479,156 @@ body.shaking { animation: screenShake .4s ease; }
 }
 
 /* ============================================================
-   MOBILE TABBAR — Responsive & Snappy on iOS
+   MOBILE SUPER-OPTIMIZED — Tabbar + Boot
    ============================================================ */
 
-/* Prevent double-tap zoom and enable fast-click behavior */
+/* ---- TABBAR: static frosted glass, zero backdrop-filter ---- */
 .mobile-boot .tabbar {
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  /* Faster, lighter blur */
-  backdrop-filter: blur(12px) saturate(150%);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
-  /* Flatten background */
-  background: linear-gradient(180deg, rgba(255,255,255,.88) 0%, rgba(255,255,255,.72) 100%);
-  /* Single border */
-  border: 1px solid rgba(255,255,255,.70);
-  border-bottom-color: rgba(255,255,255,.35);
-  /* Simplified shadow */
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.90),
-    0 4px 12px rgba(20,60,30,.10),
-    0 12px 32px rgba(20,60,30,.14),
-    0 0 60px rgba(61,141,122,.04);
-  /* Compositor layer + hardware accel for position changes */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.94) 0%, rgba(255,255,255,.82) 100%);
+  border: 1px solid rgba(255,255,255,.60);
+  border-bottom-color: rgba(255,255,255,.28);
+  box-shadow: 0 4px 24px rgba(20,60,30,.10);
   transform: translateX(-50%) translateZ(0);
   will-change: transform;
-  /* Faster transition for any property changes */
-  transition: box-shadow .2s ease, background .2s ease;
+  contain: layout style paint;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* Remove cursor-tracking spotlight on mobile */
-.mobile-boot .tabbar::after {
-  display: none;
-}
-.mobile-boot .tabbar::before {
-  background: linear-gradient(180deg, rgba(255,255,255,.45), transparent 60%);
-}
+/* Kill every decorative pseudo-layer */
+.mobile-boot .tabbar::before,
+.mobile-boot .tabbar::after,
 .mobile-boot .tabbar-depth {
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.50),
-    inset 0 -1px 0 rgba(20,60,30,.04);
+  display: none !important;
 }
 
-/* Snappier indicator: shorter transition, no overshoot on mobile */
-.mobile-boot .tab-indicator {
-  background: linear-gradient(155deg, rgba(61,141,122,.30), rgba(61,141,122,.12));
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.75),
-    0 2px 6px rgba(61,141,122,.18),
-    0 0 12px rgba(61,141,122,.08);
-  /* Fast, linear-ish snap instead of bouncy easing */
-  transition: left .12s cubic-bezier(.25,.1,.25,1), width .12s cubic-bezier(.25,.1,.25,1) !important;
-  will-change: left, width;
-}
-.mobile-boot .tab-indicator::before {
-  background: linear-gradient(180deg, rgba(255,255,255,.45), transparent);
-}
-
-/* Tab buttons: instant feedback, no hover delay */
+/* ---- TABS: fixed width, instant feedback ---- */
 .mobile-boot .tab {
+  width: 52px;
+  flex: none;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  transition: color .1s ease;
-  /* Prevent text selection on rapid taps */
   -webkit-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;
 }
-.mobile-boot .tab:active {
-  opacity: 0.7;
-  transform: scale(0.94);
-  transition: transform .06s ease, opacity .06s ease;
+@media (max-width:420px) {
+  .mobile-boot .tab {
+    width: 52px;
+    padding: 9px 2px 8px;
+  }
 }
+
+/* Hover transforms stick on iOS — remove them */
 .mobile-boot .tab:hover svg {
   transform: none;
 }
+
+/* Instant press state, zero transition delay */
+.mobile-boot .tab:active {
+  opacity: .6;
+  transform: scale(.92);
+  transition: none;
+}
 .mobile-boot .tab:active svg {
-  transform: scale(0.88);
-  transition: transform .06s ease;
+  transform: scale(.88);
+  transition: none;
 }
 .mobile-boot .tab.active svg {
   transform: scale(1.05);
-  transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+  transition: transform .10s cubic-bezier(.34,1.56,.64,1);
 }
-.mobile-boot .tab .ic-wrap {
-  transition: background .15s ease, box-shadow .15s ease;
+
+/* ---- INDICATOR: transform-only, no layout thrash ---- */
+.mobile-boot .tab-indicator {
+  left: 0 !important;
+  width: 52px !important;
+  top: 8px;
+  height: calc(100% - 16px);
+  background: rgba(61,141,122,.18);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.50);
+  transition: transform .10s cubic-bezier(.25,.46,.45,.94);
+  will-change: transform;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.mobile-boot .tab-indicator::before,
+.mobile-boot .tab-indicator::after {
+  display: none !important;
+}
+
+/* Clean active wrapper */
+.mobile-boot .tab.active .ic-wrap {
+  background: transparent;
+  box-shadow: none;
 }
 
 /* ============================================================
    MOBILE BOOT CIRCLE — GPU-Lite Liquid Glass (preserved)
    ============================================================ */
 .mobile-boot .boot-circle {
-  will-change: transform, opacity;
+  will-change: opacity;
   transform: translateZ(0);
-  backdrop-filter: blur(10px) saturate(1.25);
-  -webkit-backdrop-filter: blur(10px) saturate(1.25);
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
   background:
-    radial-gradient(ellipse 85% 55% at 50% 5%, rgba(255,255,255,0.28) 0%, transparent 55%),
-    linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 100%);
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+    radial-gradient(ellipse 85% 55% at 50% 5%, rgba(255,255,255,0.26) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.20);
   box-shadow:
-    inset 0 1px 1px rgba(255,255,255,0.30),
-    0 10px 30px rgba(0,0,0,0.25);
+    inset 0 1px 1px rgba(255,255,255,0.28),
+    0 10px 30px rgba(0,0,0,0.22);
 }
 .mobile-boot .boot-circle::before {
   filter: blur(3px);
-  opacity: 0.35;
-  animation-duration: 14s;
+  opacity: 0.30;
+  animation-duration: 16s;
   background: conic-gradient(
     from 0deg,
     rgba(255,255,255,0) 0%,
-    rgba(255,255,255,0.12) 15%,
+    rgba(255,255,255,0.10) 15%,
     rgba(255,255,255,0) 35%,
-    rgba(255,255,255,0.06) 50%,
+    rgba(255,255,255,0.05) 50%,
     rgba(255,255,255,0) 70%,
-    rgba(255,255,255,0.14) 85%,
+    rgba(255,255,255,0.12) 85%,
     rgba(255,255,255,0) 100%
   );
 }
 .mobile-boot .boot-circle::after {
-  opacity: 0.40;
+  opacity: 0.35;
   filter: blur(2px);
   animation: none;
 }
 .mobile-boot .boot-chromatic {
-  filter: drop-shadow(-1px 0 0.5px rgba(255, 60, 90, 0.12)) drop-shadow(1px 0 0.5px rgba(0, 210, 230, 0.12));
-  animation: bootChromaPulseMobile 3.5s ease-in-out infinite;
+  filter: drop-shadow(-1px 0 0.5px rgba(255, 60, 90, 0.10)) drop-shadow(1px 0 0.5px rgba(0, 210, 230, 0.10));
+  animation: bootChromaPulseMobile 4s ease-in-out infinite;
 }
 @keyframes bootChromaPulseMobile {
-  0%, 100% { filter: drop-shadow(-1px 0 0.5px rgba(255,60,90,0.08)) drop-shadow(1px 0 0.5px rgba(0,210,230,0.08)); }
-  50%      { filter: drop-shadow(-1.5px 0 0.5px rgba(255,60,90,0.16)) drop-shadow(1.5px 0 0.5px rgba(0,210,230,0.16)); }
+  0%, 100% { filter: drop-shadow(-1px 0 0.5px rgba(255,60,90,0.06)) drop-shadow(1px 0 0.5px rgba(0,210,230,0.06)); }
+  50%      { filter: drop-shadow(-1.5px 0 0.5px rgba(255,60,90,0.14)) drop-shadow(1.5px 0 0.5px rgba(0,210,230,0.14)); }
 }
 .mobile-boot .boot-sweep {
   mix-blend-mode: normal;
-  opacity: 0.35;
+  opacity: 0.30;
 }
 .mobile-boot .boot-sweep-2 {
   display: none;
 }
 .mobile-boot .boot-shimmer {
   mix-blend-mode: normal;
-  opacity: 0.18;
-  animation-duration: 5s;
+  opacity: 0.14;
+  animation-duration: 6s;
 }
 .mobile-boot .boot-grain {
-  opacity: 0.04;
+  opacity: 0.03;
   animation: none;
 }
 @keyframes bootCircleInMobile {
-  0%   { opacity: 0; transform: scale(0.75) translateZ(0); filter: blur(8px); }
+  0%   { opacity: 0; transform: scale(0.78) translateZ(0); filter: blur(6px); }
   100% { opacity: 1; transform: scale(1) translateZ(0);   filter: blur(0px); }
 }
 .mobile-boot .boot-circle {
@@ -1634,7 +1636,7 @@ body.shaking { animation: screenShake .4s ease; }
 }
 @keyframes bootCircleOutMobile {
   0%   { opacity: 1; transform: scale(1) translateZ(0);   filter: blur(0px); }
-  100% { opacity: 0; transform: scale(0.88) translateZ(0); filter: blur(6px); }
+  100% { opacity: 0; transform: scale(0.90) translateZ(0); filter: blur(5px); }
 }
 .mobile-boot .boot-circle.boot-fade-out {
   animation: bootCircleOutMobile 1.0s cubic-bezier(.65, 0, .35, 1) 0s forwards;
@@ -2328,6 +2330,11 @@ const indicator = document.getElementById('tabIndicator');
 let indicatorAnimId = 0;
 
 function placeIndicatorInstant(tab) {
+  if (document.documentElement.classList.contains('mobile-boot')) {
+    indicator.style.transition = 'none';
+    indicator.style.transform = 'translateX(' + tab.offsetLeft + 'px) translateZ(0)';
+    return;
+  }
   const br = tabbar.getBoundingClientRect();
   const tr = tab.getBoundingClientRect();
   indicator.style.transition = 'none';
@@ -2336,20 +2343,16 @@ function placeIndicatorInstant(tab) {
 }
 
 function morphIndicator(tab) {
+  // Mobile: transform-only, zero layout thrash, 100ms snap
+  if (document.documentElement.classList.contains('mobile-boot')) {
+    indicator.style.transform = 'translateX(' + tab.offsetLeft + 'px) translateZ(0)';
+    return;
+  }
   const br = tabbar.getBoundingClientRect();
   const tr = tab.getBoundingClientRect();
   const newL = tr.left - br.left, newW = tr.width;
   const curL = indicator.offsetLeft, curW = indicator.offsetWidth;
   if (Math.abs(curL - newL) < 0.5 && Math.abs(curW - newW) < 0.5) return;
-
-  // Fast-path for mobile: single snappy transition, no two-phase morph
-  if (document.documentElement.classList.contains('mobile-boot')) {
-    indicator.style.transition = 'left .12s cubic-bezier(.25,.1,.25,1), width .12s cubic-bezier(.25,.1,.25,1)';
-    indicator.style.left = newL + 'px';
-    indicator.style.width = newW + 'px';
-    return;
-  }
-
   const sL = Math.min(curL, newL), sW = Math.max(curL + curW, newL + newW) - sL;
   const id = ++indicatorAnimId;
   indicator.style.transition = 'left .16s cubic-bezier(.3,0,.15,1),width .16s cubic-bezier(.3,0,.15,1)';
@@ -2361,27 +2364,20 @@ function morphIndicator(tab) {
   }, 155);
 }
 
+const views = document.querySelectorAll('.view');
 tabs.forEach(tab => {
   tab.addEventListener('click', () => {
     tabs.forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    views.forEach(v => v.classList.remove('active'));
     document.getElementById('view-' + tab.dataset.view).classList.add('active');
     document.getElementById('pageTitle').textContent = tab.dataset.title;
     morphIndicator(tab);
   });
-
-  // Instant tactile feedback on touch devices
   if (document.documentElement.classList.contains('mobile-boot')) {
-    tab.addEventListener('touchstart', function() {
-      this.style.transform = 'scale(0.94)';
-    }, { passive: true });
-    tab.addEventListener('touchend', function() {
-      this.style.transform = '';
-    }, { passive: true });
-    tab.addEventListener('touchcancel', function() {
-      this.style.transform = '';
-    }, { passive: true });
+    tab.addEventListener('touchstart', function() { this.style.opacity = '.55'; }, { passive: true });
+    tab.addEventListener('touchend',   function() { this.style.opacity = ''; },   { passive: true });
+    tab.addEventListener('touchcancel',function() { this.style.opacity = ''; },   { passive: true });
   }
 });
 
