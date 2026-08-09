@@ -1952,7 +1952,7 @@ function stopSiren() {
 /* ============================================================
    TYPE DISPLAY HELPERS
    ============================================================ */
-const TYPE_LABELS = { fire:'Fire', smoke:'Smoke', flood:'Flood', landslide:'Landslide', manual_alert:'Manual Alert' };
+const TYPE_LABELS = { fire:'Fire', smoke:'Smoke', flood:'Flood', landslide:'Landslide', manual_alert:'Manual Triggered Alert' };
 function displayLabel(type) {
   return TYPE_LABELS[type] || (type ? type[0].toUpperCase() + type.slice(1).replace(/_/g,' ') : 'Unknown');
 }
@@ -1980,7 +1980,7 @@ function triggerEmergency(evt) {
   const icons = { fire:'🔥', smoke:'💨', flood:'💧', landslide:'⛰️', manual_alert:'🆘' };
   document.getElementById('emIcon').textContent = icons[evt.type] || '⚠️';
   document.getElementById('emHazard').textContent = evt.type === 'manual_alert'
-    ? 'Manual Alert Triggered'
+    ? 'Manual Triggered Alert Triggered'
     : displayLabel(evt.type) + ' Detected';
   document.getElementById('emTime').textContent = new Date(evt.timestamp).toLocaleTimeString();
 
@@ -2001,13 +2001,13 @@ function triggerEmergency(evt) {
     smoke:        'Smoke detected. Check for a fire source immediately and prepare for evacuation.',
     flood:        'Flood conditions detected. Move to higher ground and avoid affected areas.',
     landslide:    'Landslide risk detected. Evacuate steep slopes and follow emergency protocols.',
-    manual_alert: 'A manual alert was triggered' + (evt.source ? ' by ' + evt.source : '') + '. Check the site immediately and follow emergency protocols.'
+    manual_alert: 'A Manual Triggered Alert was triggered' + (evt.source ? ' by ' + evt.source : '') + '. Check the site immediately and follow emergency protocols.'
   };
   document.getElementById('emMessage').textContent = messages[evt.type] || 'High-confidence hazard detected. Follow emergency protocols.';
   document.getElementById('emergencyOverlay').classList.add('active');
   createSiren();
   if (Notification && Notification.permission === 'granted') {
-    const notifTitle = evt.type === 'manual_alert' ? '🆘 MANUAL ALERT TRIGGERED' : '⚠️ ' + displayLabel(evt.type).toUpperCase() + ' DETECTED';
+    const notifTitle = evt.type === 'manual_alert' ? '🆘 Manual Triggered Alert TRIGGERED' : '⚠️ ' + displayLabel(evt.type).toUpperCase() + ' DETECTED';
     const notifBody = evt.type === 'manual_alert'
       ? (evt.source ? 'Source: ' + evt.source + ' · ' : '') + new Date(evt.timestamp).toLocaleTimeString()
       : evt.confidence + '% confidence · ' + new Date(evt.timestamp).toLocaleTimeString();
@@ -2485,7 +2485,7 @@ function recordEvent(evt) {
   renderHistory(evt.type);
   if (evt.type !== 'manual_alert') updateStatusChip(evt.type, evt.confidence, evt.timestamp);
   else {
-    const label = 'Manual alert · '+new Date(evt.timestamp).toLocaleTimeString();
+    const label = 'Manual Triggered Alert · '+new Date(evt.timestamp).toLocaleTimeString();
     document.getElementById('lastUpdateTag').textContent = label;
     const sU = document.getElementById('sideLastUpdate');
     if (sU) sU.textContent = label;
@@ -2493,7 +2493,7 @@ function recordEvent(evt) {
   const notify = document.getElementById('toggleNotify').checked;
   const critical = evt.type === 'manual_alert' ? true : evt.confidence >= 60;
   const toastLabel = evt.type === 'manual_alert'
-    ? `Manual alert triggered${evt.source ? ' · ' + evt.source : ''}`
+    ? `Manual Triggered Alert triggered${evt.source ? ' · ' + evt.source : ''}`
     : `${displayLabel(evt.type)} detected · ${evt.confidence}%`;
   if (notify) showToast(toastLabel, critical);
   beep(critical);
