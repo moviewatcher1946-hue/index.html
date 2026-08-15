@@ -424,7 +424,6 @@ body.shaking { animation: screenShake .4s ease; }
 .donut-seg { fill:none;stroke-width:18;stroke-linecap:round;transition:stroke-width .25s cubic-bezier(.34,1.56,.64,1),filter .25s ease;cursor:pointer; }
 .donut-seg:hover { stroke-width:22;filter:brightness(1.12) drop-shadow(0 0 8px currentColor); }
 .donut-seg.fire      { stroke:#ff3b30; }
-.donut-seg.smoke     { stroke:#9a9a9e; }
 .donut-seg.flood     { stroke:#A3D1C6; }
 .donut-seg.landslide { stroke:#ff9f0a; }
 .donut-shimmer { fill:none;stroke:rgba(255,255,255,.18);stroke-width:18;stroke-dasharray:2 6;stroke-linecap:round;pointer-events:none;animation:shimmerRing 3s linear infinite; }
@@ -881,7 +880,6 @@ body.shaking { animation: screenShake .4s ease; }
 .chip .left { display:flex;align-items:center;gap:11px;position:relative;z-index:1; }
 .chip .swatch { width:10px;height:10px;border-radius:50%;background:var(--muted-2);box-shadow:0 0 0 2px rgba(0,0,0,.06);flex:none;transition:box-shadow .3s ease; }
 .chip.fire .swatch     { background:var(--red);box-shadow:0 0 0 2px rgba(255,59,48,.12),0 0 8px rgba(255,59,48,.35); }
-.chip.smoke .swatch    { background:var(--muted-2); }
 .chip.flood .swatch    { background:var(--teal-light);box-shadow:0 0 0 2px rgba(163,209,198,.20),0 0 8px rgba(163,209,198,.45); }
 .chip.landslide .swatch{ background:var(--amber);box-shadow:0 0 0 2px rgba(255,159,10,.15),0 0 8px rgba(255,159,10,.40); }
 .chip .name   { font-weight:600;font-size:14.5px;position:relative;z-index:1; }
@@ -1077,7 +1075,6 @@ body.shaking { animation: screenShake .4s ease; }
   background:rgba(255,59,48,.10);border:1px solid rgba(255,59,48,.15);color:var(--red);
   flex:none;position:relative;z-index:1;box-shadow:inset 0 1px 0 rgba(255,255,255,.65),0 1px 4px rgba(20,60,30,.06);
 }
-.hitem.smoke .ico     { background:rgba(110,110,115,.10);border-color:rgba(110,110,115,.15);color:var(--muted); }
 .hitem.flood .ico     { background:rgba(163,209,198,.28);border-color:rgba(163,209,198,.35);color:#1f6b5c; }
 .hitem.landslide .ico { background:rgba(255,159,10,.12);border-color:rgba(255,159,10,.20);color:#b8720a; }
 .hitem.manual_alert .ico { background:rgba(155,92,246,.14);border-color:rgba(155,92,246,.28);color:#6d3fc0; }
@@ -1610,12 +1607,6 @@ body.booting .conn-pill { transform: translateY(-12px); }
           <div class="an-leg-count" id="anCountFire">0</div>
           <div class="an-leg-pct" id="anPctFire">—</div>
         </div>
-        <div class="an-leg-row" data-type="smoke" id="legSmoke">
-          <div class="an-dot" style="background:#9a9a9e;"></div>
-          <div class="an-leg-name">Smoke</div>
-          <div class="an-leg-count" id="anCountSmoke">0</div>
-          <div class="an-leg-pct" id="anPctSmoke">—</div>
-        </div>
         <div class="an-leg-row" data-type="flood" id="legFlood">
           <div class="an-dot" style="background:#A3D1C6;box-shadow:0 0 5px rgba(163,209,198,.55);"></div>
           <div class="an-leg-name">Flood</div>
@@ -1706,10 +1697,6 @@ body.booting .conn-pill { transform: translateY(-12px); }
           <div class="chip fire"      id="chip-fire">
             <div class="left"><div class="swatch"></div><div class="name">Fire</div></div>
             <div class="reading" id="fireReading">No data</div>
-          </div>
-          <div class="chip smoke"     id="chip-smoke">
-            <div class="left"><div class="swatch"></div><div class="name">Smoke</div></div>
-            <div class="reading" id="smokeReading">No data</div>
           </div>
           <div class="chip flood"     id="chip-flood">
             <div class="left"><div class="swatch"></div><div class="name">Flood</div></div>
@@ -1952,7 +1939,7 @@ function stopSiren() {
 /* ============================================================
    TYPE DISPLAY HELPERS
    ============================================================ */
-const TYPE_LABELS = { fire:'Fire', smoke:'Smoke', flood:'Flood', landslide:'Landslide', manual_alert:'Manual Triggered Alert' };
+const TYPE_LABELS = { fire:'Fire', flood:'Flood', landslide:'Landslide', manual_alert:'Manual Triggered Alert' };
 function displayLabel(type) {
   return TYPE_LABELS[type] || (type ? type[0].toUpperCase() + type.slice(1).replace(/_/g,' ') : 'Unknown');
 }
@@ -1977,7 +1964,7 @@ function triggerEmergency(evt) {
   document.getElementById('connText').textContent = 'Emergency';
   const tag = document.getElementById('lastUpdateTag');
   tag.classList.add('emergency-tag'); tag.textContent = '⚠ ALARM';
-  const icons = { fire:'🔥', smoke:'💨', flood:'💧', landslide:'⛰️', manual_alert:'🆘' };
+  const icons = { fire:'🔥', flood:'💧', landslide:'⛰️', manual_alert:'🆘' };
   document.getElementById('emIcon').textContent = icons[evt.type] || '⚠️';
   document.getElementById('emHazard').textContent = evt.type === 'manual_alert'
     ? 'Manual Triggered Alert Triggered'
@@ -1998,7 +1985,6 @@ function triggerEmergency(evt) {
 
   const messages = {
     fire:         'Fire detected with high confidence. Activate fire suppression, alert occupants, and evacuate if necessary.',
-    smoke:        'Smoke detected. Check for a fire source immediately and prepare for evacuation.',
     flood:        'Flood conditions detected. Move to higher ground and avoid affected areas.',
     landslide:    'Landslide risk detected. Evacuate steep slopes and follow emergency protocols.',
     manual_alert: 'A Manual Triggered Alert was triggered' + (evt.source ? ' by ' + evt.source : '') + '. Check the site immediately and follow emergency protocols.'
@@ -2254,9 +2240,9 @@ function animateCount(el, from, to, duration) {
 }
 
 const DONUT_R = 52, DONUT_CX = 70, DONUT_CY = 70, DONUT_CIRC = 2 * Math.PI * DONUT_R, GAP = 2.5;
-const SEG_COLORS = { fire:'#ff3b30', smoke:'#9a9a9e', flood:'#A3D1C6', landslide:'#ff9f0a' };
-const SEG_ORDER = ['fire','smoke','flood','landslide'];
-const SEG_ICONS = { fire:'🔥', smoke:'💨', flood:'💧', landslide:'⛰️' };
+const SEG_COLORS = { fire:'#ff3b30', flood:'#A3D1C6', landslide:'#ff9f0a' };
+const SEG_ORDER = ['fire','flood','landslide'];
+const SEG_ICONS = { fire:'🔥', flood:'💧', landslide:'⛰️' };
 let lastTotal = 0, donutRafId = null;
 
 function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
@@ -2303,7 +2289,7 @@ function animateFill(counts, total, fromProg, toProg) {
 }
 
 function computeAnalyticsCounts() {
-  const counts = { fire:0, smoke:0, flood:0, landslide:0 };
+  const counts = { fire:0, flood:0, landslide:0 };
   events.forEach(e => { if (counts[e.type] !== undefined) counts[e.type]++; });
   return { counts, total: events.length };
 }
@@ -2412,7 +2398,6 @@ renderHistory();
 
 function iconFor(type) {
   if (type==='fire') return '🔥';
-  if (type==='smoke') return '💨';
   if (type==='flood') return '💧';
   if (type==='landslide') return '⛰️';
   if (type==='manual_alert') return '🆘';
