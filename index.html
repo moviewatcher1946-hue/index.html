@@ -1944,6 +1944,14 @@ function displayLabel(type) {
   return TYPE_LABELS[type] || (type ? type[0].toUpperCase() + type.slice(1).replace(/_/g,' ') : 'Unknown');
 }
 
+/* Format time in Philippine timezone (Asia/Manila) — the site's clock was
+   showing browser-local/UTC time, so e.g. 5PM in the Philippines was
+   rendering as 9:14AM. This forces every timestamp display to Manila time. */
+function formatTimePH(date) {
+  if (typeof date === 'string') date = new Date(date);
+  return date.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour12: true, hour: '2-digit', minute: '2-digit' });
+}
+
 /* ============================================================
    EMERGENCY MODE
    ============================================================ */
@@ -1969,7 +1977,7 @@ function triggerEmergency(evt) {
   document.getElementById('emHazard').textContent = evt.type === 'manual_alert'
     ? 'Manual Triggered Alert Triggered'
     : displayLabel(evt.type) + ' Detected';
-  document.getElementById('emTime').textContent = new Date(evt.timestamp).toLocaleTimeString();
+  document.getElementById('emTime').textContent = formatTimePH(evt.timestamp);
 
   const confWrap = document.getElementById('emConfWrap');
   const sourceWrap = document.getElementById('emSourceWrap');
@@ -1984,10 +1992,10 @@ function triggerEmergency(evt) {
   document.getElementById('emConf').textContent = evt.confidence + '%';
 
   const messages = {
-    fire:         'Fire detected with high confidence. Activate fire suppression, alert occupants, and evacuate if necessary.',
-    flood:        'Flood conditions detected. Move to higher ground and avoid affected areas.',
-    landslide:    'Landslide risk detected. Evacuate steep slopes and follow emergency protocols.',
-    manual_alert: 'A Manual Triggered Alert was triggered' + (evt.source ? ' by ' + evt.source : '') + '. Check the site immediately and follow emergency protocols.'
+    fire:         'FIRE ALERT: Locate the nearest fire extinguisher or suppression system. Alert all occupants immediately. Evacuate via nearest exit. Assembly point: designated safe zone. DO NOT use elevators.',
+    flood:        'FLOOD ALERT: Move to higher ground immediately. Avoid flooded areas and moving water. Do not attempt to cross flooded roads or waterways. Monitor water levels and await further guidance.',
+    landslide:    'LANDSLIDE ALERT: Evacuate the affected area and surrounding slopes immediately. Move away from slide paths and unstable terrain. Proceed to higher, stable ground. Avoid valleys and low areas.',
+    manual_alert: 'MANUAL ALERT at ' + (evt.source || 'Unknown Location') + ': Hazard reported in this area. Verify the alert status and location. Deploy response team to ' + (evt.source || 'the specified location') + ' immediately. Assess situation and take appropriate action.'
   };
   document.getElementById('emMessage').textContent = messages[evt.type] || 'High-confidence hazard detected. Follow emergency protocols.';
   document.getElementById('emergencyOverlay').classList.add('active');
@@ -1995,8 +2003,8 @@ function triggerEmergency(evt) {
   if (Notification && Notification.permission === 'granted') {
     const notifTitle = evt.type === 'manual_alert' ? '🆘 Manual Triggered Alert TRIGGERED' : '⚠️ ' + displayLabel(evt.type).toUpperCase() + ' DETECTED';
     const notifBody = evt.type === 'manual_alert'
-      ? (evt.source ? 'Source: ' + evt.source + ' · ' : '') + new Date(evt.timestamp).toLocaleTimeString()
-      : evt.confidence + '% confidence · ' + new Date(evt.timestamp).toLocaleTimeString();
+      ? (evt.source ? 'Source: ' + evt.source + ' · ' : '') + formatTimePH(evt.timestamp)
+      : evt.confidence + '% confidence · ' + formatTimePH(evt.timestamp);
     try { new Notification(notifTitle, { body: notifBody, tag: 'sentry-emergency', requireInteraction: true }); } catch(e) {}
   } else if (Notification && Notification.permission !== 'denied') { Notification.requestPermission(); }
   if (navigator.vibrate) { try { navigator.vibrate([220, 100, 220, 100, 400]); } catch(e) {} }
@@ -2335,7 +2343,7 @@ function updateAnalytics() {
     const last = events[0];
     document.getElementById('anLastDetection').style.display = 'flex';
     const el = document.getElementById('anLastVal');
-    el.textContent = displayLabel(last.type)+' · '+new Date(last.timestamp).toLocaleTimeString();
+    el.textContent = displayLabel(last.type)+' · '+formatTimePH(last.timestamp);
     el.classList.remove('updating'); void el.offsetWidth; el.classList.add('updating');
   }
 }
@@ -2417,7 +2425,7 @@ function renderHistory(newEvtType) {
         <div class="body">
           <div class="top">
             <span class="kind">${displayLabel(e.type)}</span>
-            <span class="time">${new Date(e.timestamp).toLocaleTimeString()}</span>
+            <span class="time">${formatTimePH(e.timestamp)}</span>
           </div>
           <div class="meta">${e.type === 'manual_alert' ? (e.source ? 'Source: ' + e.source : 'Manually triggered') : e.confidence + '% confidence'}${e.recorded?' · Auto-recorded':''}</div>
         </div>
@@ -2455,7 +2463,7 @@ function updateStatusChip(type, confidence, timestamp) {
     chip.classList.remove('pulsing'); void chip.offsetWidth; chip.classList.add('pulsing');
     setTimeout(() => chip.classList.remove('pulsing'), 700);
   }
-  const label = 'Updated '+new Date(timestamp).toLocaleTimeString();
+  const label = 'Updated '+formatTimePH(timestamp);
   document.getElementById('lastUpdateTag').textContent = label;
   const sU = document.getElementById('sideLastUpdate');
   if (sU) sU.textContent = label;
@@ -2470,7 +2478,7 @@ function recordEvent(evt) {
   renderHistory(evt.type);
   if (evt.type !== 'manual_alert') updateStatusChip(evt.type, evt.confidence, evt.timestamp);
   else {
-    const label = 'Manual Triggered Alert · '+new Date(evt.timestamp).toLocaleTimeString();
+    const label = 'Manual Triggered Alert · '+formatTimePH(evt.timestamp);
     document.getElementById('lastUpdateTag').textContent = label;
     const sU = document.getElementById('sideLastUpdate');
     if (sU) sU.textContent = label;
