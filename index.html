@@ -2010,9 +2010,9 @@ function triggerEmergency(evt) {
     fire:         'FIRE ALERT: Locate the nearest fire extinguisher or suppression system. Alert all occupants immediately. Evacuate via nearest exit. Assembly point: designated safe zone. DO NOT use elevators.',
     flood:        'FLOOD ALERT: Move to higher ground immediately. Avoid flooded areas and moving water. Do not attempt to cross flooded roads or waterways. Monitor water levels and await further guidance.',
     landslide:    'LANDSLIDE ALERT: Evacuate the affected area and surrounding slopes immediately. Move away from slide paths and unstable terrain. Proceed to higher, stable ground. Avoid valleys and low areas.',
-    manual_alert: 'MANUAL ALERT at ' + (evt.source || 'Unknown Location') + ': Hazard reported in this area. Verify the alert status and location. Deploy response team to ' + (evt.source || 'the specified location') + ' immediately. Assess situation and take appropriate action.'
+    manual_alert: 'MANUAL ALERT: A hazard has been reported at the site where the device is placed. Verify the situation on the ground and follow emergency protocols immediately. <span style="display:block;margin-top:14px;font-weight:800;font-size:1.6em;letter-spacing:1px;">SEND HELP</span>'
   };
-  document.getElementById('emMessage').textContent = messages[evt.type] || 'High-confidence hazard detected. Follow emergency protocols.';
+  document.getElementById('emMessage').innerHTML = messages[evt.type] || 'High-confidence hazard detected. Follow emergency protocols.';
   document.getElementById('emergencyOverlay').classList.add('active');
   createSiren();
   if (Notification && Notification.permission === 'granted') {
