@@ -1822,6 +1822,21 @@ body.booting .conn-pill { transform: translateY(-12px); }
           <div><div class="t-label">Status</div><div class="t-desc" id="pollStatusDesc">Not connected yet</div></div>
         </div>
       </div>
+      <div class="glass">
+        <div class="glass-edge"></div>
+        <div class="card-head">
+          <h2>Testing</h2>
+          <div class="tag">Temporary</div>
+        </div>
+        <div class="row">
+          <div><div class="t-label">Simulate event</div><div class="t-desc">Fires a random fake detection (fire/flood/landslide/manual alert) to test the UI — no real hazard.</div></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn" onclick="simulateRandomEvent()">
+            <span class="btn-streak"></span><div class="btn-edge"></div>Simulate Random Event
+          </button>
+        </div>
+      </div>
     </div>
   </div><!-- /app -->
 
@@ -2467,6 +2482,31 @@ function updateStatusChip(type, confidence, timestamp) {
   document.getElementById('lastUpdateTag').textContent = label;
   const sU = document.getElementById('sideLastUpdate');
   if (sU) sU.textContent = label;
+}
+
+/* ============================================================
+   TEMPORARY — RANDOM EVENT SIMULATOR (for testing/demo only)
+   Fires a fake event through the normal recordEvent() pipeline so it
+   exercises the same toasts, chips, history, and emergency overlay as
+   a real Flask-reported event. Safe to remove later.
+   ============================================================ */
+const SIM_LOCATIONS = ['Main Gate', 'Building A - 2nd Floor', 'Warehouse B', 'Parking Lot', 'Rooftop Sensor', 'East Wing Corridor'];
+let simEventCounter = 0;
+
+function simulateRandomEvent() {
+  const types = ['fire', 'flood', 'landslide', 'manual_alert'];
+  const type = types[Math.floor(Math.random() * types.length)];
+  simEventCounter++;
+  const evt = {
+    id: 'sim-' + Date.now() + '-' + simEventCounter,
+    type,
+    confidence: Math.floor(Math.random() * 41) + 60, // 60-100
+    timestamp: new Date().toISOString()
+  };
+  if (type === 'manual_alert') {
+    evt.source = SIM_LOCATIONS[Math.floor(Math.random() * SIM_LOCATIONS.length)];
+  }
+  recordEvent(evt);
 }
 
 function recordEvent(evt) {
